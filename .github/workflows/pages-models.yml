@@ -23,9 +23,14 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          for f in app.js ml.js merlin.js ui.js sw.js; do node --check "$f"; done
-          mkdir -p _site/models
-          cp index.html style.css app.js ml.js merlin.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json _site/
+          for f in app.js ml.js merlin.js metadata.js ui.js sw.js tests.cjs; do node --check "$f"; done
+          mkdir -p _site/models _site/vendor
+          cp index.html style.css app.js ml.js merlin.js metadata.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json _site/
+          curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/dist/exif-reader.js -o _site/vendor/exif-reader.js
+          curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/LICENSE -o _site/vendor/ExifReader-LICENSE
+          curl --fail --location --retry 3 https://heic.fyi/samples/exif-gps-date.heic -o /tmp/exif-gps-date.heic
+          echo '01fd9fa28d09885d8482d01a5b36d88dc89fde3b7cfeaca50b70f8314d2c63d1  /tmp/exif-gps-date.heic' | sha256sum -c -
+          TZ=UTC node tests.cjs /tmp/exif-gps-date.heic
           cd _site/models
           base=https://zenodo.org/records/24362980/files
           curl --fail --location --retry 4 --max-time 600 "$base/BirdNET%2B_V3.0_Global_12K_FP16_pruned.onnx?download=1" -o birdnet.onnx

@@ -24,3 +24,6 @@ Cached runtime JavaScript and module are loaded through local Blob URLs, and WAS
 
 ## v0.6
 Fix Emscripten relative WASM URL resolution when loaded from cached Blob URLs. The pinned runtime module uses an absolute base for import.meta.url and both mjs and wasm overrides are supplied explicitly alongside cached binary bytes. No model cache reset. Safari execution still requires verification.
+
+## v0.7
+Network-first navigation, cache-busting versioned shell files, fresh install requests with HTML version check, explicit update activation. Recovery page deletes only versioned Flock shell caches; no model or library deletion. Recovery navigation may be intercepted by older workers until updated.

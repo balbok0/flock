@@ -25,7 +25,7 @@ jobs:
           set -euxo pipefail
           for f in app.js ml.js merlin.js ui.js sw.js; do node --check "$f"; done
           mkdir -p _site/models
-          cp index.html style.css app.js ml.js merlin.js ui.js sw.js manifest.webmanifest icon.svg _site/
+          cp index.html style.css app.js ml.js merlin.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json _site/
           cd _site/models
           base=https://zenodo.org/records/24362980/files
           curl --fail --location --retry 4 --max-time 600 "$base/BirdNET%2B_V3.0_Global_12K_FP16_pruned.onnx?download=1" -o birdnet.onnx
@@ -37,5 +37,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      - name: Allow artifact metadata to propagate
+        run: sleep 15
       - uses: actions/deploy-pages@v4
         id: deployment

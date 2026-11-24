@@ -5,6 +5,6 @@ function report(message,done,total,detail){by('activity').textContent=message;co
 function note(message){log.push(new Date().toISOString()+' '+message);if(log.length>100)log.shift();by('log').textContent=log.join('\n')}
 function fail(e){const msg=e?.message||String(e);report('Error: '+msg,0,100,'See activity log for details.');note('ERROR '+msg);return msg}
 window.addEventListener('error',e=>fail(e.error||e.message));window.addEventListener('unhandledrejection',e=>fail(e.reason));
-by('copyLog').onclick=async()=>{const s='Flock v0.5\n'+navigator.userAgent+'\n'+log.join('\n');try{await navigator.clipboard.writeText(s);by('copyLog').textContent='Copied'}catch{prompt('Copy diagnostics',s)}};
+by('copyLog').onclick=async()=>{const s='Flock v0.6\n'+navigator.userAgent+'\n'+log.join('\n');try{await navigator.clipboard.writeText(s);by('copyLog').textContent='Copied'}catch{prompt('Copy diagnostics',s)}};
 return {report,note,fail};
 })();

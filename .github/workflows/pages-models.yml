@@ -1,0 +1,40 @@
+name: Deploy Flock with local model assets
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Prepare site and verified BirdNET assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p _site/models
+          cp index.html style.css app.js ml.js merlin.js ui.js sw.js manifest.webmanifest icon.svg _site/
+          cd _site/models
+          base=https://zenodo.org/records/24362980/files
+          curl --fail --location --retry 4 --max-time 600 "$base/BirdNET%2B_V3.0_Global_12K_FP16_pruned.onnx?download=1" -o birdnet.onnx
+          curl --fail --location --retry 4 --max-time 180 "$base/BirdNET%2B_V3.0_Global_12K_Labels.csv?download=1" -o birdnet.csv
+          curl --fail --location --retry 4 "$base/MODEL_LICENSE.txt?download=1" -o MODEL_LICENSE.txt
+          curl --fail --location --retry 4 "$base/ACCEPTABLE_USE.txt?download=1" -o ACCEPTABLE_USE.txt
+          printf '%s\n' '6b42d8905f25f856fb8ad91544138914  birdnet.onnx' 'bb25847af8a581e1382081382f01e762  birdnet.csv' '77b299ba50d3119cd28c5a2b6fc0ff4b  MODEL_LICENSE.txt' '92f52349d7a08f74167f096702bac26a  ACCEPTABLE_USE.txt' | md5sum -c -
+          printf '%s\n' 'BirdNET+ V3.0.1 by Mario Lasseck et al. https://doi.org/10.5281/zenodo.24362980' > NOTICE.txt
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment

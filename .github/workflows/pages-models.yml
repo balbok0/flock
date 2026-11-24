@@ -23,6 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          for f in app.js ml.js merlin.js ui.js sw.js; do node --check "$f"; done
           mkdir -p _site/models
           cp index.html style.css app.js ml.js merlin.js ui.js sw.js manifest.webmanifest icon.svg _site/
           cd _site/models

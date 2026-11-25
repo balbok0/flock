@@ -20,27 +20,27 @@ jobs:
       - uses: actions/checkout@v4
       - name: Restore model assets and reference fixtures
         id: models
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: .ci-models
-          key: hoot-models-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/prepare-models.sh', 'ci/requirements.txt', 'extract-geo.py', 'prepare-geo.py') }}
+          key: hoot-models-v1-linux-x64-${{ hashFiles('ci/prepare-models.sh', 'ci/requirements.txt', 'extract-geo.py', 'prepare-geo.py') }}
       - name: Restore precomputed region tables
         id: regions
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: .ci-regions
-          key: hoot-regions-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/prepare-regions.sh', 'ci/requirements.txt', 'build-regions.py', 'build-ebird-codes.py') }}
+          key: hoot-regions-v1-linux-x64-${{ hashFiles('ci/prepare-regions.sh', 'ci/requirements.txt', 'build-regions.py', 'build-ebird-codes.py') }}
       - uses: actions/setup-python@v5
-        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
+        if: ${{ steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true' }}
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: ci/requirements.txt
       - name: Install asset preparation dependencies
-        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
+        if: ${{ steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true' }}
         run: python -m pip install --only-binary=:all: -r ci/requirements.txt
       - name: Prepare missing immutable assets in parallel
-        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
+        if: ${{ steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true' }}
         env:
           MODELS_HIT: ${{ steps.models.outputs.cache-hit }}
           REGIONS_HIT: ${{ steps.regions.outputs.cache-hit }}
@@ -57,18 +57,6 @@ jobs:
         run: |
           (cd .ci-models && sha256sum -c SHA256SUMS)
           (cd .ci-regions && sha256sum -c SHA256SUMS)
-      - name: Save verified model assets
-        if: steps.models.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .ci-models
-          key: ${{ steps.models.outputs.cache-primary-key }}
-      - name: Save verified region tables
-        if: steps.regions.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .ci-regions
-          key: ${{ steps.regions.outputs.cache-primary-key }}
       - name: Assemble site
         run: |
           set -euo pipefail

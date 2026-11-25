@@ -1,0 +1,86 @@
+name: Prepare Hoot assets
+on:
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: Asset bundles to regenerate (auto = missing or stale)
+        type: choice
+        options: [auto, models, regions, all]
+        default: auto
+  # One-time bootstrap: the sentinel is removed by the successful asset commit.
+  # Ordinary source pushes never trigger this workflow.
+  push:
+    branches: [main]
+    paths: ['prebuilt/BOOTSTRAP']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: prepare-hoot-assets
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ci/requirements.txt
+      - name: Install asset preparation dependencies
+        run: |
+          python -m pip install --only-binary=:all: -r ci/requirements.txt
+      - name: Choose asset bundles
+        id: choose
+        env:
+          MODEL_KEY: ${{ hashFiles('ci/prepare-models.sh', 'ci/requirements.txt', 'ci/seed-assets.sh', 'ci/enrich-geo-labels.py', 'extract-geo.py', 'prepare-geo.py') }}
+          REGION_KEY: ${{ hashFiles('ci/prepare-regions.sh', 'ci/requirements.txt', 'ci/seed-assets.sh', 'build-regions.py', 'build-ebird-codes.py') }}
+          REFRESH: ${{ inputs.refresh || 'auto' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for bundle in models regions; do
+            key="$MODEL_KEY"
+            [[ "$bundle" != regions ]] || key="$REGION_KEY"
+            if [[ "$REFRESH" != all && "$REFRESH" != "$bundle" && -f "prebuilt/$bundle/INPUTS" && "$(cat "prebuilt/$bundle/INPUTS")" == "$key" ]]; then
+              echo "$bundle=true" >> "$GITHUB_OUTPUT"
+              cp -a "prebuilt/$bundle" ".ci-$bundle"
+            else
+              echo "$bundle=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+      - name: Seed initial assets from previous verified deployment
+        if: ${{ github.event_name == 'push' && steps.choose.outputs.models == 'false' && steps.choose.outputs.regions == 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ci/seed-assets.sh
+      - name: Prepare missing or explicitly refreshed assets
+        env:
+          MODELS_VENDORED: ${{ steps.choose.outputs.models }}
+          REGIONS_VENDORED: ${{ steps.choose.outputs.regions }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pids=()
+          if [[ "$MODELS_VENDORED" != true && ! -f .ci-models/SHA256SUMS ]]; then bash ci/prepare-models.sh & pids+=("$!"); fi
+          if [[ "$REGIONS_VENDORED" != true && ! -f .ci-regions/SHA256SUMS ]]; then bash ci/prepare-regions.sh & pids+=("$!"); fi
+          failed=0
+          for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+          test "$failed" = 0
+          (cd .ci-models && sha256sum -c SHA256SUMS)
+          (cd .ci-regions && sha256sum -c SHA256SUMS)
+      - name: Test complete site before committing assets
+        run: bash ci/test-site.sh .ci-models .ci-regions
+      - name: Commit verified assets and explicitly trigger deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODEL_KEY: ${{ hashFiles('ci/prepare-models.sh', 'ci/requirements.txt', 'ci/seed-assets.sh', 'ci/enrich-geo-labels.py', 'extract-geo.py', 'prepare-geo.py') }}
+          REGION_KEY: ${{ hashFiles('ci/prepare-regions.sh', 'ci/requirements.txt', 'ci/seed-assets.sh', 'build-regions.py', 'build-ebird-codes.py') }}
+          MODELS_VENDORED: ${{ steps.choose.outputs.models }}
+          REGIONS_VENDORED: ${{ steps.choose.outputs.regions }}
+        shell: bash
+        run: |
+          bash ci/vendor-assets.sh
+          gh workflow run pages-models.yml --ref main

@@ -16,20 +16,56 @@ async function startGuideDownload(p,d){
 }
 function showGuideManager(){
  if(guideDownloadActive||reviewLocked())return;
- const d=reviewDialog('Offline bird guides'),saved=el('div'),country=el('select'),sub=el('select'),preview=el('div'),message=el('p',undefined,'guideStatus'),estimate=el('small');
- let prepared=null,planning=false,changed=false;
+ const d=reviewDialog('Offline bird guides'),saved=el('div',undefined,'guideList'),add=el('details',undefined,'guideAdd'),country=el('select'),sub=el('select'),preview=el('div',undefined,'guidePreview'),message=el('p',undefined,'guideStatus');
+ let prepared=null,planning=false,changed=false,packs=[],refreshing=false;
  const selected=Regions.get(state.birdRegion)||Regions.inferred(state.assets);
  country.setAttribute('aria-label','Guide country');sub.setAttribute('aria-label','Guide state or province');
  country.add(new Option('Choose country…',''));country.add(new Option('Worldwide thumbnails','world'));for(const r of Regions.countries())country.add(new Option(r.name,r.id));country.value=selected?.country||'';
  function subdivisions(){sub.replaceChildren();const rows=Regions.children(country.value);sub.hidden=!rows.length;if(rows.length){sub.add(new Option('Entire country',country.value));for(const r of rows)sub.add(new Option(r.name,r.id))}}
  subdivisions();if(selected?.parent)sub.value=selected.id;
- function invalidate(){prepared=null;preview.replaceChildren();estimate.textContent='';download.disabled=true}
+ const chosen=()=>sub.hidden?country.value:sub.value;
+ function dismissFinished(){const b=document.getElementById('dismissProgress');if(!b.hidden)b.click()}
+ function invalidate(){prepared=null;preview.replaceChildren();message.textContent='';const existing=packs.some(p=>p.id===chosen());prepare.hidden=existing;prepare.disabled=refreshing||planning||!chosen();if(existing)message.textContent='Already in your guides.'}
  country.onchange=()=>{subdivisions();invalidate()};sub.onchange=invalidate;
- const prepare=btn('Check guide coverage',async()=>{if(planning||Guides.isBusy()||reviewLocked())return;const id=sub.hidden?country.value:sub.value;if(!id)throw Error('Choose a country');planning=true;invalidate();prepare.disabled=true;country.disabled=sub.disabled=true;message.textContent='Preparing species list…';try{prepared=await Guides.plan(id);const s=await Guides.status(prepared);preview.textContent=prepared.name+' · '+s.total+' species · '+prepared.size+' px · '+s.n+' already downloaded';estimate.textContent='Estimated new image data: '+Math.ceil((s.total-s.n)*(prepared.size===160?8:40)/1000)+'–'+Math.ceil((s.total-s.n)*(prepared.size===160?30:100)/1000)+' MB (actual browser storage may be larger).';message.textContent='One curated reference photo per species. Region list is an approximate year-round range-model selection.';download.disabled=s.complete;UI.finish('Guide coverage ready',1,1,prepared.name+' · '+s.total+' species')}catch(err){message.textContent=err.message;UI.fail(err)}finally{planning=false;prepare.disabled=false;country.disabled=sub.disabled=false;if(prepared)download.disabled=(await Guides.status(prepared)).complete}});
- const download=btn('Download guide',()=>prepared&&startGuideDownload(prepared,d),'primary');download.disabled=true;
- async function refresh(){saved.replaceChildren(el('h4','Downloaded guides'));const packs=await Guides.list();if(!packs.length)saved.append(el('small','No guides downloaded yet.'));for(const p of packs){const s=await Guides.status(p);if(!d.open)return;const row=el('div',undefined,'guidePackRow');row.append(el('strong',p.name),el('small',s.n+' / '+s.total+' photos · '+(s.complete?'Ready offline':'Incomplete')));if(!s.complete)row.append(btn('Resume',()=>startGuideDownload(p,d)));row.append(btn('Remove guide',async()=>{if(Guides.isBusy()||planning)return;if(!confirm('Remove '+p.name+' guide? Photos used by other guides and your sightings are kept.'))return;await Guides.remove(p.id);changed=true;await refresh();if(prepared)download.disabled=(await Guides.status(prepared)).complete},'danger'));saved.append(row)}}
- d.append(el('p','Avicommons · Creative Commons reference images for noncommercial use. Download before heading into the field. Your photos and sightings are never sent.'),saved,el('h4','Add a guide'),country,sub,prepare,preview,estimate,message,download);
- UI.mount(d);d.addEventListener('close',()=>{UI.unmount(d);if(changed&&!reviewLocked())render()},{once:true});refresh().catch(e=>message.textContent=e.message);
+ const prepare=btn('Check guide coverage',async()=>{
+  if(planning||refreshing||Guides.isBusy()||reviewLocked()||packs.some(p=>p.id===chosen())||!chosen())return;
+  const id=chosen();planning=true;invalidate();prepare.disabled=true;country.disabled=sub.disabled=true;message.textContent='Preparing species list…';
+  try{
+   const p=await Guides.plan(id),s=await Guides.status(p);if(!d.open)return;prepared=p;
+   message.textContent='';preview.replaceChildren(packRow(p,s,false));dismissFinished();
+  }catch(err){if(d.open){message.textContent=err.message;UI.fail(err)}}
+  finally{planning=false;prepare.disabled=!chosen();country.disabled=sub.disabled=false}
+ });
+ function packRow(p,s,installed){
+  const row=el('div',undefined,'guidePackRow'),head=el('div',undefined,'guidePackHead'),text=el('div',undefined,'guidePackText'),actions=el('div',undefined,'guidePackActions');
+  row.dataset.guideId=p.id;
+  const count=s.complete?s.total+' photos · Ready offline':s.n+' / '+s.total+' photos';
+  text.append(el('strong',p.name),el('small',count,'guideCount'));head.append(text);
+  if(!s.complete&&installed){const bar=el('progress');bar.max=s.total;bar.value=s.n;bar.setAttribute('aria-label','Downloaded photos for '+p.name);text.append(bar)}
+  if(!s.complete||!installed){const button=btn(installed?'Resume':'Download guide',()=>startGuideDownload(p,d),'primary');actions.append(button)}
+  if(installed){const remove=btn('Remove',async()=>{if(Guides.isBusy()||planning||refreshing)return;if(!confirm('Remove '+p.name+' guide? Photos used by other guides and your sightings are kept.'))return;await Guides.remove(p.id);changed=true;await refresh()},'guideRemove');remove.setAttribute('aria-label','Remove '+p.name+' guide');actions.append(remove)}
+  else if(!s.complete){const n=s.total-s.n,lo=Math.ceil(n*(p.size===160?8:40)/1000),hi=Math.ceil(n*(p.size===160?30:100)/1000);text.append(el('small','~'+lo+'–'+hi+' MB to download','guideEstimate'))}
+  head.append(actions);row.append(head);return row
+ }
+ async function refresh(first=false){
+  refreshing=true;prepare.disabled=true;
+  try{
+   packs=await Guides.list();const rows=await Promise.all(packs.map(async p=>packRow(p,await Guides.status(p),true)));if(!d.open)return;
+   saved.replaceChildren(...rows);saved.hidden=!rows.length;
+   if(first){add.open=!packs.length;if(packs.some(p=>p.id===chosen())){country.value='';subdivisions()}}
+   else if(!packs.length)add.open=true;
+   invalidate();
+  }finally{refreshing=false;prepare.disabled=planning||!chosen()}
+ }
+ const help=el('details',undefined,'guideHelp'),source=el('a','Avicommons');source.href='https://avicommons.org/';source.target='_blank';source.rel='noopener noreferrer';const info=el('p');info.append(source,document.createTextNode(' provides one licensed reference photo per available species. Regions use approximate year-round model coverage. Downloads stay on this device; your sightings are not shared.'));
+ help.append(el('summary','About these guides'),info);
+ add.append(el('summary','Add a region'),country,sub,prepare,preview,message);d.append(saved,add,help);
+ // A finished download or coverage notice is already represented in the list.
+ // Clear it when opening the manager; the same dock still shows active downloads
+ // during coverage preparation, including runtime/model assets.
+ dismissFinished();UI.mount(d);
+ d.addEventListener('close',()=>{UI.unmount(d);if(changed&&!reviewLocked())render()},{once:true});
+ refresh(true).catch(e=>message.textContent=e.message);
 }
 // Reserve thumbnail space before async cache lookup, keeping the review layout stable.
 function referenceThumb(species,onClick){

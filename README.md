@@ -168,3 +168,7 @@ Do not turn a failed IndexedDB read into a missing-file migration; stop startup 
 ## v0.32 — Remove non-bird photos directly in Review
 
 The photo viewer's overflow menu offers Remove this photo and No birds in this encounter. Removing a photo advances within the group; removing the last photo or rejecting the group requires confirmation and removes the encounter's sightings. If a removed photo is linked to confirmed species in a surviving encounter, explicitly choose to retain those group sightings (relink to a remaining photo) or discard them; the encounter returns to pending review. Other confirmations remain untouched. The same path handles file-detail deletion. Media bytes and metadata are deleted atomically in local storage, never from the device's original Photos/Files library.
+
+### Offline browser QA
+
+The media scenarios now wait for an active controlling service worker and cached shell, then terminate the actual local HTTP server and verify that the origin is unreachable before reloading. This avoids a WebKit/Playwright offline-emulation navigation error without skipping the offline test. Restored media hashes and the confirmed species must still match the online library.

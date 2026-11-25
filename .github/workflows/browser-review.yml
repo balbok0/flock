@@ -52,7 +52,7 @@ jobs:
           pid=$!
           trap 'kill "$pid" || true' EXIT
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/version.json && break; sleep 1; done
-          node ci/ui-review.cjs "$MODE"
+          HOOT_QA_SERVER_PID="$pid" node ci/ui-review.cjs "$MODE"
       - name: Keep screenshots, source attribution and results
         if: always()
         uses: actions/upload-artifact@v4

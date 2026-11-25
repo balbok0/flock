@@ -137,7 +137,26 @@ async function media(){
  assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);pass('Reconnect missing original preserves asset ID and confirmed sighting');
  await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);assert.equal(await page.evaluate(()=>state.assets.filter(a=>a.mediaMissing).length),0);pass('Reconnected media persists after another reload');
  await screenshot('restored');
- await context.setOffline(true);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);pass('Offline reload restores the photo without a network request');
+ // navigator.serviceWorker.ready alone does not guarantee this document is
+ // controlled. Wait for the worker and the complete shell before disconnecting.
+ await wait(async()=>{if(!navigator.serviceWorker.controller||!navigator.serviceWorker.controller.scriptURL.endsWith('/sw.js'))return false;const keys=await caches.keys();const shell=keys.find(k=>/^flock-v\d+$/.test(k));if(!shell)return false;const cache=await caches.open(shell);return !!await cache.match(new URL('./index.html',location.href))},null,30000);
+ // Playwright WebKit's setOffline can itself reject a navigation before its
+ // service worker runs. Stop the real HTTP server instead, and independently
+ // verify that it cannot serve the app. No network mocking or cached test HTML.
+ const pid=Number(process.env.HOOT_QA_SERVER_PID);assert(Number.isInteger(pid)&&pid>1,'Missing QA server PID');
+ process.kill(pid,'SIGTERM');
+ const http=require('node:http');
+ let unavailable=false;
+ for(let attempt=0;attempt<30&&!unavailable;attempt++){
+  unavailable=await new Promise(resolve=>{const req=http.get(base+'/version.json',r=>{r.resume();resolve(false)});req.on('error',e=>resolve(e.code==='ECONNREFUSED'||e.code==='ECONNRESET'));req.setTimeout(500,()=>req.destroy());});
+  if(!unavailable)await new Promise(r=>setTimeout(r,100));
+ }
+ assert(unavailable,'QA HTTP server is still reachable');
+ console.log('Origin server stopped; testing actual disconnected navigation');
+ await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);
+ const offline=await page.evaluate(async()=>Promise.all(state.assets.map(async a=>({id:a.id,name:a.name,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await a.blob.arrayBuffer())))}))));
+ assert.deepEqual(offline,before);assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);
+ pass('Offline reload with origin server stopped restores exact media and confirmations');
 }
 async function inference(){
  // Genuine model download and inference: no fixture detections or replacement classifier.

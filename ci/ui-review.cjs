@@ -67,7 +67,7 @@ async function review(){
  assert.equal(await page.evaluate(()=>state.encounters.flatMap(e=>e.review||[]).filter(r=>r.species==='Rufous-vented Chachalaca').length),1);
  pass('Split preserves confirmation on one side only');
  await card.getByRole('button',{name:'Split / merge encounters',exact:true}).click();
- const merge=dialog.locator('details').filter({has:dialog.getByText('Merge with another encounter',{exact:true})});
+ const merge=dialog.locator('details').filter({has:page.getByText('Merge with another encounter',{exact:true})});
  if(!await merge.evaluate(n=>n.open))await merge.locator('summary').click();
  const options=await merge.locator('select option').allTextContents();assert(options.length>=1);
  await merge.locator('select').selectOption({index:0});
@@ -122,7 +122,7 @@ async function inference(){
  await page.locator('.queueIndex summary').click();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
  await screenshot('predictions');
  const e=await page.evaluate(()=>state.encounters.find(e=>e.ids.some(id=>state.assets.find(a=>a.id===id)?.autoBirds?.length))?.id);
- if(e){await page.locator('.queueIndex summary').click();const opts=page.locator('.queueIndexItem');const ix=await page.evaluate(id=>{const all=state.encounters.filter(e=>VisionViews.reviewStatus(e)==='pending').sort((a,b)=>Math.min(...a.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity))-Math.min(...b.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity)));return all.findIndex(x=>x.id===id)},e);await opts.nth(ix).click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId===id&&!reviewWriting,e)}
+ if(e){if(!await page.locator('.queueIndex').evaluate(n=>n.open))await page.locator('.queueIndex summary').click();const opts=page.locator('.queueIndexItem');const ix=await page.evaluate(id=>{const all=state.encounters.filter(e=>VisionViews.reviewStatus(e)==='pending').sort((a,b)=>Math.min(...a.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity))-Math.min(...b.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity)));return all.findIndex(x=>x.id===id)},e);await opts.nth(ix).click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId===id&&!reviewWriting,e)}
  const card=page.locator('.encounterReview');
  if(!(await card.locator('.cropActions button').count()))await card.getByRole('button',{name:'Next photo',exact:true}).click();
  const crop=card.locator('.cropActions button').first();await crop.click();

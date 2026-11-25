@@ -20,6 +20,7 @@ function segments(asset,detections,resolve=d=>d.species){
 }
 function clock(s){s=Math.max(0,Math.floor(s));const m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')}
 function groups(rows){const out=new Map();for(const row of rows){const key=JSON.stringify(row.slice(5,13)),entry=out.get(key)||{name:row[5],lat:row[6],lon:row[7],date:row[8],time:row[9],region:row[10],country:row[11],protocol:row[12],rows:[]};entry.rows.push({species:row[0],count:row[3]});out.set(key,entry)}return [...out.values()]}
-return {split,merge,segments,clock,groups};
+function confirmedTime(asset,species,fallback){const offset=asset.heardOffsets&&Object.hasOwn(asset.heardOffsets,species)?asset.heardOffsets[species]:null;const start=Date.parse(asset.time);return Number.isFinite(offset)&&offset>=0&&Number.isFinite(start)&&Number.isFinite(start+offset*1000)&&Math.abs(start+offset*1000)<=8.64e15?new Date(start+offset*1000).toISOString():fallback||asset.time}
+return {split,merge,segments,clock,groups,confirmedTime};
 })();
 if(typeof module!=='undefined')module.exports=ReviewTools;

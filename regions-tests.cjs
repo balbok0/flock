@@ -9,7 +9,7 @@ const start=src.indexOf('function validLoc('),end=src.indexOf("$('export').oncli
 assert.ok(start>=0&&end>start);
 const fields={fallbackCountry:{value:''},fallbackRegion:{value:''},protocol:{value:'Incidental'}};
 const audio={id:'a',kind:'audio',time:'2026-11-24T12:00:00Z',wallTime:'2026-11-24T12:00:00',heard:['Blue-gray Tanager'],location:null};
-const sandbox={...M,VisionViews:require('./vision.js'),Regions:R,Taxonomy:{exact:common=>({common}),model:common=>({common})},$:id=>fields[id],state:{assets:[audio],encounters:[],detections:[],birdRegion:'TT'}};
+const sandbox={...M,VisionViews:require('./vision.js'),ReviewTools:require('./review-tools.js'),Regions:R,Taxonomy:{exact:common=>({common}),model:common=>({common})},$:id=>fields[id],state:{assets:[audio],encounters:[],detections:[],birdRegion:'TT'}};
 vm.createContext(sandbox);vm.runInContext(src.slice(start,end),sandbox);
 let exported=sandbox.exportRows();assert.equal(exported.length,1);assert.deepEqual(Array.from(exported[0].slice(5,8)),[R.label(R.get('TT')),'','']);assert.equal(exported[0][11],'TT');
 sandbox.state.birdRegion='US-CA';exported=sandbox.exportRows();assert.equal(exported[0][10],'CA');assert.equal(exported[0][11],'US');assert.deepEqual(Array.from(exported[0].slice(6,8)),['','']);
@@ -23,3 +23,5 @@ console.log('Export regression tests passed: selected region, actual GPS, inferr
 const bird={species:'Blue-gray Tanager',confirmed:true,box:{x:.1,y:.1,w:.2,h:.2}},photo1={...p,id:'p1',autoBirds:[bird,bird]},photo2={...p,id:'p2',autoBirds:[bird,{...bird,species:'Other bird'}]};sandbox.state.assets=[photo1,photo2];sandbox.state.encounters=[{ids:['p1','p2'],confirmed:true,species:'Blue-gray Tanager',count:1}];exported=sandbox.exportRows();assert.equal(exported.length,2);assert.equal(exported.find(r=>r[0]==='Blue-gray Tanager')[3],2);assert.equal(exported.find(r=>r[0]==='Other bird')[3],1);
 
 sandbox.state.encounters[0].review=[{species:'Other bird',count:4,photoId:'p2'}];exported=sandbox.exportRows();assert.equal(exported.length,1);assert.equal(exported[0][0],'Other bird');assert.equal(exported[0][3],4);sandbox.state.encounters[0].review=[];assert.throws(()=>sandbox.exportRows(),/Confirm sightings first/);
+
+sandbox.state.encounters=[];sandbox.state.assets=[{...audio,heardOffsets:{'Blue-gray Tanager':65}}];sandbox.state.birdRegion='TT';exported=sandbox.exportRows();assert.equal(exported[0][9],'12:01');

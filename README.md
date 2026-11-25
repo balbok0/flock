@@ -41,3 +41,6 @@ Birding regions are selected separately from exact observation GPS. Offline Natu
 
 ## v0.13
 Export maps each observation's actual GPS to country and first-level subdivision codes (ISO-style suffix, up to 3 characters), independently of birding-region override. For unmapped coordinates only, manually supplied fallback codes take precedence over the selected region. Small-country subdivisions may be blank. Boundary/code coverage is not an authoritative eBird crosswalk; authenticated import remains untested. Exact coordinates remain required.
+
+## v0.14
+Visible eBird fields mirror selected/inferred birding region. CI downloads eBird's official workbook linked by its spreadsheet import guide (attachment 48293281603, 18 Apr 2023), validates coverage, and bundles a crosswalk. Unmatched subdivisions use blank state codes. Actual GPS takes priority for individual records; validated fallback codes are optional. The workbook is a dated snapshot; authenticated import remains untested.

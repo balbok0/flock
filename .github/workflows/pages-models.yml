@@ -39,12 +39,14 @@ jobs:
           echo 'd30b7f51ad301889ab193a384c72f1a1  /tmp/geo.zip' | md5sum -c -
           python3 extract-geo.py /tmp/geo.zip _site/models
           python3 -m venv /tmp/flock-geo-venv
-          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6 shapely==2.1.1 pyproj==3.7.1
+          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6 shapely==2.1.1 pyproj==3.7.1 openpyxl==3.1.5
           ne=https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson
           curl --fail --location --retry 3 "$ne/ne_10m_admin_0_countries.geojson" -o /tmp/countries.geojson
           curl --fail --location --retry 3 "$ne/ne_10m_admin_1_states_provinces.geojson" -o /tmp/subdivisions.geojson
           /tmp/flock-geo-venv/bin/python build-regions.py /tmp/countries.geojson /tmp/subdivisions.geojson _site/regions.json
-          node regions-tests.cjs _site/regions.json
+          curl --fail --location --retry 3 'https://support.ebird.org/helpdesk/attachments/48293281603' -o /tmp/ebird-regions.xlsx
+          /tmp/flock-geo-venv/bin/python build-ebird-codes.py /tmp/ebird-regions.xlsx _site/regions.json _site/ebird-codes.json
+          node regions-tests.cjs _site/regions.json _site/ebird-codes.json
           /tmp/flock-geo-venv/bin/python prepare-geo.py _site/models/geo-v305-fp32.onnx /tmp/geo-reference.json
           npm install --prefix /tmp/flock-ort --no-audit --no-fund onnxruntime-web@1.22.0
           node geo-smoke.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" /tmp/geo-reference.json

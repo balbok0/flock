@@ -10,7 +10,7 @@ download(){ curl --fail --location --retry 2 --connect-timeout 10 --max-time 90 
 compile(){ python ci/build-taxonomy.py "$tmp/source.csv" "$tmp/taxonomy.json" "$1"; }
 if download "$official" "$tmp/source.csv" && compile "$official"; then
   echo "Using official Cornell v2026 CSV"
-elif download 'https://api.ebird.org/v2/ref/taxonomy/versions' "$tmp/versions.json" && python -c 'import json,sys; v=json.load(open(sys.argv[1])); assert any(str(x.get("authorityVer"))=="2026" and x.get("latest") for x in v),v' "$tmp/versions.json" && download "$api" "$tmp/source.csv" && compile "$api"; then
+elif download 'https://api.ebird.org/v2/ref/taxonomy/versions' "$tmp/versions.json" && python -c 'import json,sys; v=json.load(open(sys.argv[1])); assert any(float(x.get("authorityVer",0))==2026 and x.get("latest") for x in v),v' "$tmp/versions.json" && download "$api" "$tmp/source.csv" && compile "$api"; then
   echo "Using official eBird API CSV, verified latest version is 2026"
 elif download "$xlsx" "$tmp/source.xlsx" && python -c 'import openpyxl,csv,sys; w=openpyxl.load_workbook(sys.argv[1],read_only=True,data_only=True); f=open(sys.argv[2],"w",encoding="utf-8",newline=""); csv.writer(f).writerows(w.active.values); f.close()' "$tmp/source.xlsx" "$tmp/source.csv" && compile "$xlsx"; then
   echo "Using official Cornell v2026 workbook converted to CSV"

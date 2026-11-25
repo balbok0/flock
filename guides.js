@@ -43,7 +43,8 @@ async function fetchPhoto(c,row,size,signal){
   catch(err){if(controller.signal.aborted||err.name!=='TypeError')throw err;response=await fetch(src,{...options,mode:'no-cors'})}
   checkResponse(response);if(response.type!=='opaque'&&!(response.headers.get('content-type')||'').startsWith('image/'))throw Error('Not an image');
   if(controller.signal.aborted)throw Error('Download paused or timed out');
-  await c.put(src,response);stored=true;await decode(src,controller.signal);
+  let byteSize=null;if(response.type!=='opaque'){const data=await response.arrayBuffer();byteSize=data.byteLength;if(controller.signal.aborted)throw Error('Download paused or timed out');response=new Response(data,{headers:{'Content-Type':response.headers.get('content-type')}})}
+  await c.put(src,response);stored=true;await decode(src,controller.signal);return byteSize;
  }catch(err){if(stored)await c.delete(src);if(controller.signal.aborted&&!signal.aborted)throw Error('Guide photo timed out');throw err}
  finally{clearTimeout(timer);signal.removeEventListener('abort',abort)}
 }
@@ -53,12 +54,12 @@ async function pool(items,task,{signal,concurrency=CONCURRENCY,onProgress=()=>{}
  if(!Number.isInteger(concurrency)||concurrency<1||concurrency>CONCURRENCY)throw Error('Invalid download concurrency');
  const controller=new AbortController(),stop=()=>controller.abort(),external=signal||new AbortController().signal;
  if(external.aborted)stop();else external.addEventListener('abort',stop,{once:true});
- let next=0,done=initial,failed=0,error='',reason='',active=0,retryAt=0;
- const started=Date.now(),report=()=>onProgress({done,failed,total,error,active,elapsedMs:Date.now()-started,downloaded:done-initial,retryAt});
+ let next=0,done=initial,failed=0,error='',reason='',active=0,retryAt=0,measuredBytes=0,measuredFiles=0,opaqueFiles=0;
+ const started=Date.now(),report=()=>onProgress({done,failed,total,error,active,elapsedMs:Date.now()-started,downloaded:done-initial,retryAt,measuredBytes,measuredFiles,opaqueFiles});
  async function worker(){
   while(!controller.signal.aborted&&next<items.length){
    const item=items[next++];active++;
-   try{await task(item,controller.signal);done++}
+   try{const size=await task(item,controller.signal);if(Number.isFinite(size)&&size>=0){measuredBytes+=size;measuredFiles++}else opaqueFiles++;done++}
    catch(e){if(!controller.signal.aborted){failed++;error||=e?.message||String(e);
     if(e?.retryAt){retryAt=e.retryAt;reason='throttled';error=e.message;onThrottle(retryAt);stop()}
     else if(e?.name==='QuotaExceededError'){reason='storage';error='Browser storage is full. Free space before resuming.';stop()}
@@ -66,7 +67,7 @@ async function pool(items,task,{signal,concurrency=CONCURRENCY,onProgress=()=>{}
    }}finally{active--;report()}
   }
  }
- try{report();const settled=await Promise.allSettled(Array.from({length:Math.min(concurrency,items.length)},worker));const unexpected=settled.find(r=>r.status==='rejected');if(unexpected)throw unexpected.reason;return {done,failed,error,reason,retryAt,paused:external.aborted,elapsedMs:Date.now()-started}}finally{external.removeEventListener('abort',stop)}
+ try{report();const settled=await Promise.allSettled(Array.from({length:Math.min(concurrency,items.length)},worker));const unexpected=settled.find(r=>r.status==='rejected');if(unexpected)throw unexpected.reason;return {done,failed,error,reason,retryAt,paused:external.aborted,elapsedMs:Date.now()-started,measuredBytes,measuredFiles,opaqueFiles}}finally{external.removeEventListener('abort',stop)}
 }
 async function download(p,signal,onProgress=()=>{}){
  if(busy)throw Error('Another guide operation is running');busy=true;

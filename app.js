@@ -100,7 +100,7 @@ const reviewPhotoIndex=new Map();let reviewWriting=false,reviewIndexOpen=false,r
 function reviewURL(blob){if(!(blob instanceof Blob)||!blob.size)return '';const u=URL.createObjectURL(blob);reviewObjectURLs.push(u);return u}
 function releaseIndexURLs(){reviewIndexURLs.forEach(u=>URL.revokeObjectURL(u));reviewIndexURLs=[]}
 function releaseReviewURLs(){reviewObjectURLs.forEach(u=>URL.revokeObjectURL(u));reviewObjectURLs=[];releaseIndexURLs()}
-function reviewLocked(){return reviewWriting||clearingLibrary||importingLibrary||!!$('runAll').dataset.running||ML.isBusy()}
+function reviewLocked(){return (typeof guideDownloadActive!=='undefined'&&guideDownloadActive)||reviewWriting||clearingLibrary||importingLibrary||!!$('runAll').dataset.running||ML.isBusy()}
 function encounterPhotos(e){return state.assets.filter(p=>e.ids.includes(p.id)).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time))}
 function updateExportCount(){const n=state.encounters.reduce((n,e)=>n+VisionViews.reviewed(e,encounterPhotos(e),reviewCanonical).length,0);$('exportCount').textContent=n+' confirmed photo species · '+state.assets.reduce((n,a)=>n+(a.heard?.length||0),0)+' confirmed sound species'}
 // Shared removal path: persist the full change atomically before updating the UI.

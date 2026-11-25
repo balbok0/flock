@@ -168,8 +168,15 @@ async function guides(){
  assert(p.count>50);assert(p.rows.some(r=>r.name==='Rufous-vented Chachalaca'));console.log('TT guide coverage: '+p.count+' species');result.guideCoverage=p.count;
  // QA download a bounded real subset of the computed region, not an entire
  // regional pack on every CI push. Production UI downloads the full list.
- const s=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);
- assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');const resumed=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);assert(resumed.complete);assert.equal(resumed.done,p.rows.length);assert.equal(resumed.failed,0);pass('Resume reuses all downloaded reference images');await d.getByRole('button',{name:'Close',exact:true}).click();await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);pass('Downloaded reference thumbnail appears directly in species row');
+ const subset={id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows:p.rows};
+ // Exercise the real Download button with a bounded, genuinely selected subset.
+ await page.evaluate(p=>{Guides.plan=async()=>p},subset);
+ await d.getByRole('button',{name:'Check guide coverage'}).click();await wait(()=>document.querySelector('dialog[open] .guideStatus')?.textContent.includes('One curated')&&document.querySelector('dialog[open] .modalActivityDock'));
+ await d.getByRole('button',{name:'Download guide',exact:true}).click();
+ await wait(()=>!document.querySelector('dialog[open]')&&document.querySelector('#activity').textContent.includes('Downloading guide')||document.querySelector('#activity').textContent.includes('Guide ready offline'));
+ await wait(()=>!guideDownloadActive&&document.querySelector('#activity').textContent.includes('Guide ready offline'),null,60000);
+ const s=await page.evaluate(p=>Guides.status(p),subset);assert.equal(await page.locator('#activityDock').count(),1);assert.match(await page.locator('#progressDetail').textContent(),/photos saved/);assert(!/photos\/s|downloading\s*\d/.test(await page.locator('#progressDetail').textContent()));pass('Guide download uses shared bottom activity dock and no worker count');
+ assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');const resumed=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);assert(resumed.complete);assert.equal(resumed.done,p.rows.length);assert.equal(resumed.failed,0);pass('Resume reuses all downloaded reference images');await dismiss();await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);pass('Downloaded reference thumbnail appears directly in species row');
  await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);
  assert.match(await d.textContent(),/Photo:.*CC/);await screenshot('guide-online');await d.getByRole('button',{name:'Close',exact:true}).click();

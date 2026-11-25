@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),T=require('./ui.js');
+assert.equal(T.bytes(123),'123 B');assert.equal(T.bytes(1234),'1.2 KB');assert.equal(T.bytes(2400000),'2.4 MB');assert.equal(T.duration(95),'1m 35s');
+assert.match(T.details({received:1000000,totalBytes:5000000,elapsedMs:2000,scope:'File'}),/500 KB\/s.*File ETA ~8s/);
+assert.match(T.details({received:500000,elapsedMs:1000}),/500 KB\/s.*ETA estimating/);
+assert.match(T.details({received:0,elapsedMs:0}),/Measuring speed/);
+const m=T.guideMetrics({done:12,total:20,downloaded:2,elapsedMs:2000,measuredBytes:100000,measuredFiles:2,opaqueFiles:0,failed:0},480);
+assert.equal(m.received,100000);assert.equal(m.totalBytes,500000);assert.equal(m.remainingSeconds,8);assert.equal(m.estimated,false);
+const opaque=T.guideMetrics({done:1,total:10,downloaded:1,elapsedMs:1000,measuredBytes:0,measuredFiles:0,opaqueFiles:1},480);
+assert.equal(opaque.estimated,true);assert.match(T.details(opaque),/~70 KB\/s.*ETA ~9s/);assert(!T.details(opaque).includes('photos/s'));
+console.log('Transfer stats: byte units, per-file ETA, unknown totals, guide resume, opaque estimates passed');

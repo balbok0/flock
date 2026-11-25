@@ -13,8 +13,8 @@ const second={...row,key:'124'};assert.deepEqual(G.pendingRows({size:480,rows:[r
 (async()=>{
  const items=Array.from({length:24},(_,i)=>i),sleep=ms=>new Promise(r=>setTimeout(r,ms));
  let active=0,peak=0,seen=[];
- const result=await G.pool(items,async i=>{active++;peak=Math.max(peak,active);seen.push(i);await sleep(4);active--},{initial:5,total:29});
- assert.equal(peak,4);assert.equal(new Set(seen).size,24);assert.equal(result.done,29);assert.equal(active,0);
+ const result=await G.pool(items,async i=>{active++;peak=Math.max(peak,active);seen.push(i);await sleep(4);active--;return 1000},{initial:5,total:29});
+ assert.equal(peak,4);assert.equal(new Set(seen).size,24);assert.equal(result.done,29);assert.equal(active,0);assert.equal(result.measuredBytes,24000);assert.equal(result.measuredFiles,24);assert.equal(result.opaqueFiles,0);
  const controller=new AbortController();let calls=0,ended=0;
  const paused=await G.pool(items,async(i,signal)=>{calls++;if(i===0)controller.abort();await sleep(3);ended++;if(signal.aborted)throw Error('aborted')},{signal:controller.signal});
  assert(paused.paused);assert(calls<=4);assert.equal(ended,calls);assert.equal(paused.failed,0);

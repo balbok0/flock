@@ -18,6 +18,7 @@ node geo-tests.cjs
 node vision-tests.cjs
 node review-tools-tests.cjs
 node guide-tests.cjs
+node download-tests.cjs
 # Same-origin detector asset; verify pinned upstream model bytes before publishing.
 mkdir -p _site/models
 curl --fail --location --retry 3 --silent --show-error https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx -o _site/models/yolox-nano-0.1.1rc0.onnx

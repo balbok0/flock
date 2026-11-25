@@ -34,3 +34,9 @@ console.log('Review queue: filters, progress, navigation, deferred and empty rev
  assert.equal(V.encounterLabel(e,[{id:'p',autoBirds:[{visual:[{species:'A',similarity:.9}]},{visual:[{species:'B',similarity:.8}]}]}]).title,'A · B');
  console.log('Encounter index labels: suggestions, confirmations, multiple species and empty reviews passed');
 }
+
+{
+ const p={id:'first',autoBirds:[{visual:[{species:'Bird',similarity:.73,occurrence:.86,nearAudio:true},{species:'Rare',similarity:.91,occurrence:.0001,rawAlternative:true}]}]},q={id:'second',autoBirds:[{visual:[{species:'Bird',similarity:.68,occurrence:.98},{species:'Unknown',similarity:.6,occurrence:null,rawAlternative:true}]}]};
+ const rows=V.suggestions({},[p,q]),bird=rows.find(r=>r.species==='Bird');assert.equal(bird.similarity,.73);assert.equal(bird.occurrence,.86);assert.equal(bird.photoId,'first');assert.equal(bird.nearAudio,true);assert.deepEqual(V.scoreEvidence(bird),{similarity:'0.730',range:'86%',tier:'local'});assert.equal(V.scoreEvidence(rows.find(r=>r.species==='Rare')).range,'<1%');assert.equal(V.scoreEvidence(rows.find(r=>r.species==='Unknown')).tier,'unknown');assert.equal(V.scoreEvidence({occurrence:0}).range,'0%');assert.equal(V.scoreEvidence({}).range,null);
+ console.log('Original visual/range evidence survives aggregation without mixing independent maxima');
+}

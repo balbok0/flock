@@ -3,7 +3,7 @@
 // model assets and sightings. Only explicit downloads access the image CDN.
 const Guides=(()=>{
 const IMAGES='hoot-avicommons-images-v1',PACKS='hoot-avicommons-packs-v1',VERSION='2025',REGIONAL_SIZE=480,WORLD_SIZE=160;
-let catalog=null,busy=false;
+let catalog=null,busy=false,lookupIndex=null;
 const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
 function normalize(row){
  const code=String(row.code||''),key=String(row.key||''),by=String(row.by||'').trim(),sciName=String(row.sciName||'').trim(),name=String(row.name||'').trim(),license=norm(row.license).replace(/\s+/g,'-');
@@ -23,7 +23,7 @@ async function plan(id){const rows=await load();if(id==='world')return {id,name:
  const r=Regions.get(id);if(!r)throw Error('Choose a region');const prior=await ML.guidePrior(r);if(!prior)throw Error('Range model unavailable; try again while online');
  const selected=select(rows,Taxonomy.exact,prior,Geo.occurrence);if(!selected.length)throw Error('No guide photos found for this region');return {id,name:Regions.label(r),size:REGIONAL_SIZE,version:VERSION,rows:selected}
 }
-async function write(p){await (await caches.open(PACKS)).put(packKey(p.id),new Response(JSON.stringify(p),{headers:{'Content-Type':'application/json'}}))}
+async function write(p){await (await caches.open(PACKS)).put(packKey(p.id),new Response(JSON.stringify(p),{headers:{'Content-Type':'application/json'}}));lookupIndex=null}
 function decode(src,signal){return new Promise((resolve,reject)=>{const i=new Image();let timer;function finish(err){clearTimeout(timer);signal?.removeEventListener('abort',abort);i.onload=i.onerror=null;if(err){i.removeAttribute('src');reject(err)}else resolve()}function abort(){finish(Error('Download paused'))}if(signal?.aborted){abort();return}signal?.addEventListener('abort',abort,{once:true});i.onload=()=>i.naturalWidth>0?finish():finish(Error('Empty guide image'));i.onerror=()=>finish(Error('Guide image cannot be decoded'));timer=setTimeout(()=>finish(Error('Guide image timed out')),20000);i.src=src})}
 async function fetchPhoto(c,row,size,signal){
  const src=url(row,size);if(await c.match(src))return;
@@ -43,8 +43,9 @@ async function download(p,signal,onProgress=()=>{}){
  const s=await status(p);return {...s,failed,error:firstError,paused:signal.aborted}
  }finally{busy=false}
 }
-async function remove(id){if(busy)throw Error('Pause downloads first');busy=true;try{const old=await list(),p=old.find(x=>x.id===id);if(!p)return;const remaining=new Set(old.filter(x=>x.id!==id).flatMap(x=>x.rows.map(r=>url(r,x.size))));await (await caches.open(PACKS)).delete(packKey(id));const c=await caches.open(IMAGES);for(const row of p.rows){const src=url(row,p.size);if(!remaining.has(src))await c.delete(src)}}finally{busy=false}}
-async function find(taxon){if(!taxon)return null;const c=await caches.open(IMAGES);for(const p of (await list()).sort((a,b)=>b.size-a.size)){const row=p.rows.find(r=>matches(r,taxon));if(row){const src=url(row,p.size);if(await c.match(src))return {...row,src,size:p.size,pack:p.name}}}return null}
+async function remove(id){if(busy)throw Error('Pause downloads first');busy=true;try{const old=await list(),p=old.find(x=>x.id===id);if(!p)return;const remaining=new Set(old.filter(x=>x.id!==id).flatMap(x=>x.rows.map(r=>url(r,x.size))));await (await caches.open(PACKS)).delete(packKey(id));lookupIndex=null;const c=await caches.open(IMAGES);for(const row of p.rows){const src=url(row,p.size);if(!remaining.has(src))await c.delete(src)}}finally{busy=false}}
+async function index(){if(!lookupIndex){const pending=(async()=>{const out=new Map();for(const p of (await list()).sort((a,b)=>b.size-a.size))for(const row of p.rows){if(!out.has(row.code))out.set(row.code,[]);out.get(row.code).push({...row,src:url(row,p.size),size:p.size,pack:p.name})}return out})();lookupIndex=pending;pending.catch(()=>{if(lookupIndex===pending)lookupIndex=null})}return lookupIndex}
+async function find(taxon){if(!taxon)return null;const c=await caches.open(IMAGES),rows=(await index()).get(taxon.code)||[];for(const row of rows)if(matches(row,taxon)&&await c.match(row.src))return row;return null}
 return {normalize,matches,select,url,licenseLabel,licenseURL,load,list,status,plan,download,remove,find,isBusy:()=>busy,IMAGES,PACKS};
 })();
 if(typeof module!=='undefined')module.exports=Guides;

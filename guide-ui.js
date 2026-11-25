@@ -15,7 +15,23 @@ function showGuideManager(){
  const download=btn('Download guide',()=>prepared&&runPack(prepared),'primary');download.disabled=true;progress.hidden=true;
  async function refresh(){saved.replaceChildren(el('h4','Downloaded guides'));const packs=await Guides.list();if(!packs.length)saved.append(el('small','No guides downloaded yet.'));for(const p of packs){const s=await Guides.status(p);if(!d.open)return;const row=el('div',undefined,'guidePackRow');row.append(el('strong',p.name),el('small',s.n+' / '+s.total+' photos · '+(s.complete?'Ready offline':'Incomplete')));if(!s.complete)row.append(btn('Resume',()=>runPack(p)));row.append(btn('Remove guide',async()=>{if(Guides.isBusy())return;if(!confirm('Remove '+p.name+' guide? Photos used by other guides and your sightings are kept.'))return;await Guides.remove(p.id);await refresh();if(prepared)download.disabled=(await Guides.status(prepared)).complete},'danger'));saved.append(row)}}
  d.append(el('p','Avicommons · Creative Commons reference images for noncommercial use. Download before heading into the field. Your photos and sightings are never sent.'),saved,el('h4','Add a guide'),country,sub,prepare,preview,estimate,message,progress,actions);actions.append(download,pause);
- d.addEventListener('close',()=>controller?.abort(),{once:true});refresh().catch(e=>message.textContent=e.message);
+ d.addEventListener('close',()=>{controller?.abort();if(!reviewLocked())render()},{once:true});refresh().catch(e=>message.textContent=e.message);
+}
+// Reserve thumbnail space before async cache lookup, keeping the review layout stable.
+function referenceThumb(species,onClick){
+ const b=btn('',onClick,'referenceThumb'),caption=el('small','Reference'),slot=el('span','No photo','referenceThumbPlaceholder');
+ b.setAttribute('aria-label','Compare reference photo for '+species);b.append(slot,caption);
+ async function load(){try{const hit=await Guides.find(Taxonomy.exact(species));if(!b.isConnected||!hit)return;const img=el('img');img.alt=species+' reference';img.referrerPolicy='no-referrer';img.title='Photo: '+hit.by+' · '+Guides.licenseLabel(hit)+' · Avicommons';img.onerror=()=>{if(b.isConnected){img.remove();slot.hidden=false;caption.textContent='No photo'}};img.onload=()=>{if(b.isConnected){slot.hidden=true;caption.textContent=hit.by+' · '+Guides.licenseLabel(hit)}};b.insertBefore(img,caption);img.src=hit.src}catch{}}
+ // A microtask permits the caller to mount the row first.
+ Promise.resolve().then(load);return b
+}
+function evidenceScores(v,{audio=false}={}){
+ const scores=VisionViews.scoreEvidence(v),row=el('div',undefined,'evidenceScores');
+ if(audio&&Number.isFinite(v.confidence))row.append(el('span','Sound '+Math.round(v.confidence*100)+'%','evidenceVisual'));
+ else if(scores.similarity!==null)row.append(el('span','Visual '+scores.similarity,'evidenceVisual'));
+ const label=scores.tier==='local'?'In range':scores.tier==='unlikely'?'Outside likely range':'Range unknown',range=el('span',scores.range===null?label:'Range '+scores.range+' · '+label,'evidenceRange '+scores.tier);
+ range.title='Geographic suitability estimate, not identification probability';row.append(range);
+ if(v.nearAudio)row.append(el('span','Nearby sound match','evidenceAudio'));return row
 }
 async function appendOfflineReference(content,taxon){
  const hit=await Guides.find(taxon);if(!hit)return false;

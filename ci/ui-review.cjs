@@ -169,12 +169,12 @@ async function guides(){
  // QA download a bounded real subset of the computed region, not an entire
  // regional pack on every CI push. Production UI downloads the full list.
  const s=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);
- assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');await d.getByRole('button',{name:'Close',exact:true}).click();
+ assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');await d.getByRole('button',{name:'Close',exact:true}).click();await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);pass('Downloaded reference thumbnail appears directly in species row');
  await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);
  assert.match(await d.textContent(),/Photo:.*CC/);await screenshot('guide-online');await d.getByRole('button',{name:'Close',exact:true}).click();
  await wait(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);
- const requests=[];page.on('request',r=>{if(r.url().includes('api.inaturalist.org'))requests.push(r.url())});
+ await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);const requests=[];page.on('request',r=>{if(r.url().includes('api.inaturalist.org'))requests.push(r.url())});pass('Inline reference thumbnail survives offline reload');
  await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);assert.deepEqual(requests,[]);await screenshot('guide-offline');pass('Offline comparison renders cached Avicommons image and attribution after reload');
  await d.getByRole('button',{name:'Close',exact:true}).click();
@@ -194,7 +194,7 @@ async function inference(){
  console.log(JSON.stringify(result.inference,null,2));
  assert(findings.every(p=>p.detectorVersion),'Detector did not run on every photo');
  assert(findings.some(p=>p.boxes.length>0),'No birds detected in any fixture');
- pass('Real YOLOX and WingCLIP inference completed on all three photos');
+ pass('Real YOLOX and WingCLIP inference completed on all three photos');await page.locator('.reviewSpecies .evidenceScores').first().waitFor();const evidence=await page.locator('.reviewSpecies .evidenceScores').allTextContents();assert(evidence.some(s=>/Visual -?\d+\.\d{3}/.test(s)&&/Range \d+%|Range <1%/.test(s)));pass('Visual similarity and independent range suitability shown on inferred species rows');
  await page.locator('.queueIndex summary').click();await page.locator('.queueIndexItem').first().waitFor();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
  await screenshot('predictions');
  const e=await page.evaluate(()=>state.encounters.find(e=>e.ids.some(id=>state.assets.find(a=>a.id===id)?.autoBirds?.length))?.id);

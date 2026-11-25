@@ -21,5 +21,5 @@ with open(sys.argv[1],encoding='utf-8-sig',newline='') as f:
 assert len(rows)>10000,len(rows)
 assert len({r[0] for r in rows})==len(rows),'Duplicate species codes'
 assert any(r[1]=='Rufous-vented Chachalaca' and r[2]=='Ortalis ruficauda' for r in rows),'Missing chachalaca'
-Path(sys.argv[2]).write_text(json.dumps({'version':'2026','source':'https://www.birds.cornell.edu/clementschecklist/download/','taxa':rows},ensure_ascii=False,separators=(',',':')))
+Path(sys.argv[2]).write_text(json.dumps({'version':'2026','source':sys.argv[3] if len(sys.argv)>3 else 'https://www.birds.cornell.edu/clementschecklist/download/','taxa':rows},ensure_ascii=False,separators=(',',':')))
 print('Compiled eBird taxonomy:',len(rows),'reportable taxa')

@@ -2,6 +2,11 @@ name: Deploy Hoot
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'prebuilt/TAXONOMY_BOOTSTRAP'
+      - 'ci/prepare-taxonomy.sh'
+      - 'ci/build-taxonomy.py'
+      - 'prebuilt/taxonomy/source.csv'
   workflow_dispatch:
 permissions:
   contents: read

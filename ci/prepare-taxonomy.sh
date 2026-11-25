@@ -3,7 +3,7 @@ set -euo pipefail
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p prebuilt/taxonomy
-api='https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=csv&locale=en'
+api='https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=csv&locale=en&version=2026'
 official='https://www.birds.cornell.edu/clementschecklist/wp-content/uploads/2026/11/eBird_Taxonomy_v2026-october-2026.csv'
 xlsx='https://www.birds.cornell.edu/clementschecklist/wp-content/uploads/2026/11/eBird_Taxonomy_v2026-october-2026.xlsx'
 download(){ curl --fail --location --retry 2 --connect-timeout 10 --max-time 90 --silent --show-error --user-agent 'Hoot birding (https://github.com/balbok0/flock)' "$1" -o "$2"; }

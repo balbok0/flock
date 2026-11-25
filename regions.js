@@ -17,7 +17,8 @@ function groupContext(a,assets,override){if(!a.length)return null;const c=a.map(
 function codes(r){return r&&official?official.crosswalk[r.id]||null:null}
 function validCodes(country,region=''){return !!official&&Object.hasOwn(official.countries,country)&&(!region||Object.hasOwn(official.states,country+'-'+region))}
 function exportCodes(location,selected,manualCountry='',manualRegion=''){const actual=codes(locate(location)),fallback=codes(get(selected));if(actual)return actual;if(manualCountry)return validCodes(manualCountry,manualRegion)?{country:manualCountry,region:manualRegion}:null;return fallback;}
+function exportName({country,region=''},selected){const r=get(selected),c=codes(r);if(c?.country===country&&c.region===region)return label(r);const countryName=official?.countries[country]||get(country)?.name||country;if(!region)return countryName;const key=country+'-'+region;return (official?.states[key]||get(key)?.name||region)+', '+countryName}
 function label(r){return r.parent?r.name+', '+(get(r.parent)?.name||r.parent):r.name}
-return {init,load,get,countries,children,locate,inferred,resolve,context,groupContext,label,codes,validCodes,initCodes,exportCodes};
+return {init,load,get,countries,children,locate,inferred,resolve,context,groupContext,label,codes,validCodes,initCodes,exportCodes,exportName};
 })();
 if(typeof module!=='undefined')module.exports=Regions;

@@ -2,3 +2,20 @@ const assert=require('node:assert/strict'),fs=require('node:fs');global.Geo=requ
 assert.deepEqual(R.codes(R.get('TT')),{country:'TT',region:''});assert.deepEqual(R.codes(R.get('US-CA')),{country:'US',region:'CA'});assert.deepEqual(R.exportCodes(p.location,'US-CA'),{country:'TT',region:''});assert.deepEqual(R.exportCodes({lat:0,lon:-140},'US-CA'),{country:'US',region:'CA'});assert.deepEqual(R.exportCodes({lat:0,lon:-140},'US-CA','TT',''),{country:'TT',region:''});console.log('eBird geographic code mapping tests passed');
 
 assert.ok(R.validCodes('TT',''));assert.ok(R.validCodes('US','CA'));assert.ok(!R.validCodes('US','ZZZ'));assert.equal(R.exportCodes({lat:0,lon:-140},'TT','US','ZZZ'),null);
+
+// Exercise actual app export with the committed region/code tables.
+const vm=require('node:vm'),M=require('./metadata.js'),src=fs.readFileSync('app.js','utf8');
+const start=src.indexOf('function validLoc('),end=src.indexOf("$('export').onclick",start);
+assert.ok(start>=0&&end>start);
+const fields={fallbackCountry:{value:''},fallbackRegion:{value:''},protocol:{value:'Incidental'}};
+const audio={id:'a',kind:'audio',time:'2026-11-24T12:00:00Z',wallTime:'2026-11-24T12:00:00',heard:['Blue-gray Tanager'],location:null};
+const sandbox={...M,Regions:R,Taxonomy:{exact:common=>({common}),model:common=>({common})},$:id=>fields[id],state:{assets:[audio],encounters:[],detections:[],birdRegion:'TT'}};
+vm.createContext(sandbox);vm.runInContext(src.slice(start,end),sandbox);
+let exported=sandbox.exportRows();assert.equal(exported.length,1);assert.deepEqual(Array.from(exported[0].slice(5,8)),[R.label(R.get('TT')),'','']);assert.equal(exported[0][11],'TT');
+sandbox.state.birdRegion='US-CA';exported=sandbox.exportRows();assert.equal(exported[0][10],'CA');assert.equal(exported[0][11],'US');assert.deepEqual(Array.from(exported[0].slice(6,8)),['','']);
+sandbox.state.assets=[{...audio,location:p.location}];exported=sandbox.exportRows();assert.equal(exported[0][11],'TT');assert.deepEqual(Array.from(exported[0].slice(6,8)),[p.location.lat,p.location.lon]);
+sandbox.state.birdRegion=null;sandbox.state.assets=[audio,p];exported=sandbox.exportRows();assert.equal(exported[0][11],'TT');assert.deepEqual(Array.from(exported[0].slice(6,8)),['','']);
+sandbox.state.assets=[audio];assert.throws(()=>sandbox.exportRows(),/choose a birding region in Import/);
+fields.fallbackCountry.value='US';fields.fallbackRegion.value='CA';exported=sandbox.exportRows();assert.equal(exported[0][10],'CA');assert.equal(exported[0][11],'US');assert.deepEqual(Array.from(exported[0].slice(6,8)),['','']);
+fields.fallbackCountry.value='';fields.fallbackRegion.value='';sandbox.state.birdRegion='TT';sandbox.state.assets=[audio,{...p,id:'p',location:null}];sandbox.state.encounters=[{confirmed:true,ids:['p'],species:'Other bird',count:1}];assert.equal(sandbox.exportRows().length,2);
+console.log('Export regression tests passed: selected region, actual GPS, inferred region, manual fallback, missing region and photos without GPS');

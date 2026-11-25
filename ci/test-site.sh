@@ -7,7 +7,7 @@ regions="$2"
 rm -rf _site
 mkdir -p _site
 cp -a "$models/site/." "$regions/site/." _site/
-cp index.html style.css app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
+cp index.html style.css review-tools.js review-extras.js app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
 cp prebuilt/taxonomy/taxonomy.json _site/
 (cd prebuilt/taxonomy && sha256sum -c SHA256SUMS)
 node taxonomy-tests.cjs _site/taxonomy.json
@@ -15,6 +15,7 @@ for f in *.js *.cjs; do node --check "$f"; done
 node library-tests.cjs
 node geo-tests.cjs
 node vision-tests.cjs
+node review-tools-tests.cjs
 # Same-origin detector asset; verify pinned upstream model bytes before publishing.
 mkdir -p _site/models
 curl --fail --location --retry 3 --silent --show-error https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx -o _site/models/yolox-nano-0.1.1rc0.onnx

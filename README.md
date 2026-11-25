@@ -140,3 +140,7 @@ Review one encounter at a time with a persistent queue (To review, Later, Done, 
 ## v0.26 — Review navigation polish
 
 Completing or navigating an encounter returns the viewport to the queue header. A sticky compact Done action is always available, including when viewing photo evidence. Allow pinch zoom alongside photo swipes.
+
+## v0.27 — Review evidence and checklist tools
+
+View the padded bird crop used by WingCLIP (displayed at 448px), compare candidate species against explicitly requested iNaturalist research-grade, openly licensed reference photos with attribution, and open the eBird species guide. Reference lookup needs internet and transmits only the species name, not personal media, location or recording data. Split a photo encounter at any chronological photo boundary or merge with another encounter; confirmed species follow their recorded evidence photo when splitting and use maximum counts when merging. No observations are copied into both new groups; modified encounters return to pending review. Audio review groups detection windows by species, shows their positions in the recording and plays the chosen segment directly, with independent one-tap confirmation. Final export displays the exact deduplicated CSV records grouped by date/time/location, including region-only location and unknown-count warnings, before sharing the CSV. It does not invent a checklist or combine different dates and locations. All local review and export functions remain offline-capable. Reference lookup and device playback require real-browser validation.

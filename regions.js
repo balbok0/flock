@@ -14,7 +14,9 @@ function inferred(assets){const ids=new Set(assets.filter(a=>a.kind==='photo').m
 function resolve(a,assets,override){return get(override)||locate(a.location)||inferred(assets)}
 function context(a,assets,override){const r=resolve(a,assets,override);if(!r)return null;const week=Geo.week(a);return {id:r.id,name:r.name,points:r.points,weeks:week===null?[6,18,30,42]:[week],source:override?'selected':locate(a.location)?'file region':'library region'}}
 function groupContext(a,assets,override){if(!a.length)return null;const c=a.map(x=>context(x,assets,override)).filter(Boolean);if(!c.length)return null;const r=c.every(x=>x.id===c[0].id)?get(c[0].id):c.every(x=>get(x.id).country===get(c[0].id).country)?get(get(c[0].id).country):null;if(!r)return null;const weeks=[...new Set(c.flatMap(x=>x.weeks))];return {id:r.id,name:r.name,points:r.points,weeks,source:override?'selected':'photo region'}}
+function codes(r){if(!r||!/^[A-Z]{2}$/.test(r.country))return null;const suffix=r.parent&&r.id.startsWith(r.country+'-')?r.id.slice(3):'';return {country:r.country,region:/^[A-Z0-9]{1,3}$/.test(suffix)?suffix:''}}
+function exportCodes(location,selected,manualCountry='',manualRegion=''){const actual=codes(locate(location)),fallback=codes(get(selected));if(actual)return actual;if(manualCountry)return {country:manualCountry,region:manualRegion};return fallback;}
 function label(r){return r.parent?r.name+', '+(get(r.parent)?.name||r.parent):r.name}
-return {init,load,get,countries,children,locate,inferred,resolve,context,groupContext,label};
+return {init,load,get,countries,children,locate,inferred,resolve,context,groupContext,label,codes,exportCodes};
 })();
 if(typeof module!=='undefined')module.exports=Regions;

@@ -38,3 +38,6 @@ Geo deployment checks the actual ONNX terminal activation, adds sigmoid only to 
 
 ## v0.12
 Birding regions are selected separately from exact observation GPS. Offline Natural Earth v5.1.2 public-domain boundary index auto-detects countries and first-level administrative areas for countries over 500,000 km². User can override with country or subdivision. A unique library region fills missing locations for ranking only. Mixed countries use file-specific regions, no guess for unlocated media. The model takes the maximum occurrence across up to 16 representative land points; missing trustworthy dates use four seasonal samples. These are sampled suitability estimates, not regional probabilities or complete checklists. No coordinate upload. Exact file GPS is preserved for eBird; inferred region is not used as exact location. Existing model cache unchanged.
+
+## v0.13
+Export maps each observation's actual GPS to country and first-level subdivision codes (ISO-style suffix, up to 3 characters), independently of birding-region override. For unmapped coordinates only, manually supplied fallback codes take precedence over the selected region. Small-country subdivisions may be blank. Boundary/code coverage is not an authoritative eBird crosswalk; authenticated import remains untested. Exact coordinates remain required.

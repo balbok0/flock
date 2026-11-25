@@ -18,49 +18,76 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Restore model assets and reference fixtures
+        id: models
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-models
+          key: hoot-models-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/prepare-models.sh', 'ci/requirements.txt', 'extract-geo.py', 'prepare-geo.py') }}
+      - name: Restore precomputed region tables
+        id: regions
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-regions
+          key: hoot-regions-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ci/prepare-regions.sh', 'ci/requirements.txt', 'build-regions.py', 'build-ebird-codes.py') }}
       - uses: actions/setup-python@v5
+        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
         with:
           python-version: '3.12'
-      - uses: actions/configure-pages@v5
-      - name: Prepare site and verified BirdNET assets
+          cache: pip
+          cache-dependency-path: ci/requirements.txt
+      - name: Install asset preparation dependencies
+        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
+        run: python -m pip install --only-binary=:all: -r ci/requirements.txt
+      - name: Prepare missing immutable assets in parallel
+        if: steps.models.outputs.cache-hit != 'true' || steps.regions.outputs.cache-hit != 'true'
+        env:
+          MODELS_HIT: ${{ steps.models.outputs.cache-hit }}
+          REGIONS_HIT: ${{ steps.regions.outputs.cache-hit }}
         shell: bash
         run: |
-          set -euxo pipefail
-          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs library-tests.cjs geo-semantic.cjs; do node --check "$f"; done
-          node library-tests.cjs
-          mkdir -p _site/models _site/vendor
+          set -euo pipefail
+          pids=()
+          if [[ "$MODELS_HIT" != true ]]; then bash ci/prepare-models.sh & pids+=("$!"); fi
+          if [[ "$REGIONS_HIT" != true ]]; then bash ci/prepare-regions.sh & pids+=("$!"); fi
+          failed=0
+          for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+          test "$failed" = 0
+      - name: Verify restored assets
+        run: |
+          (cd .ci-models && sha256sum -c SHA256SUMS)
+          (cd .ci-regions && sha256sum -c SHA256SUMS)
+      - name: Save verified model assets
+        if: steps.models.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-models
+          key: ${{ steps.models.outputs.cache-primary-key }}
+      - name: Save verified region tables
+        if: steps.regions.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-regions
+          key: ${{ steps.regions.outputs.cache-primary-key }}
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp -a .ci-models/site/. .ci-regions/site/. _site/
           cp index.html style.css app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
-          curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/dist/exif-reader.js -o _site/vendor/exif-reader.js
-          curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/LICENSE -o _site/vendor/ExifReader-LICENSE
-          curl --fail --location --retry 3 https://heic.fyi/samples/exif-gps-date.heic -o /tmp/exif-gps-date.heic
-          echo '01fd9fa28d09885d8482d01a5b36d88dc89fde3b7cfeaca50b70f8314d2c63d1  /tmp/exif-gps-date.heic' | sha256sum -c -
-          TZ=UTC node tests.cjs /tmp/exif-gps-date.heic
+      - name: Run all regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in *.js *.cjs; do node --check "$f"; done
+          node library-tests.cjs
+          TZ=UTC node tests.cjs .ci-models/fixtures/exif-gps-date.heic
           node geo-tests.cjs
-          curl --fail --location --retry 4 --max-time 600 'https://zenodo.org/records/24362980/files/BirdNET%2B_Geomodel_V3.0.5_Global_14K.zip?download=1' -o /tmp/geo.zip
-          echo 'd30b7f51ad301889ab193a384c72f1a1  /tmp/geo.zip' | md5sum -c -
-          python3 extract-geo.py /tmp/geo.zip _site/models
-          python3 -m venv /tmp/flock-geo-venv
-          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6 shapely==2.1.1 pyproj==3.7.1 openpyxl==3.1.5
-          ne=https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson
-          curl --fail --location --retry 3 "$ne/ne_10m_admin_0_countries.geojson" -o /tmp/countries.geojson
-          curl --fail --location --retry 3 "$ne/ne_10m_admin_1_states_provinces.geojson" -o /tmp/subdivisions.geojson
-          /tmp/flock-geo-venv/bin/python build-regions.py /tmp/countries.geojson /tmp/subdivisions.geojson _site/regions.json
-          curl --fail --location --retry 3 'https://support.ebird.org/helpdesk/attachments/48293281603' -o /tmp/ebird-regions.xlsx
-          /tmp/flock-geo-venv/bin/python build-ebird-codes.py /tmp/ebird-regions.xlsx _site/regions.json _site/ebird-codes.json
           node regions-tests.cjs _site/regions.json _site/ebird-codes.json
-          /tmp/flock-geo-venv/bin/python prepare-geo.py _site/models/geo-v305-fp32.onnx /tmp/geo-reference.json
-          npm install --prefix /tmp/flock-ort --no-audit --no-fund onnxruntime-web@1.22.0
-          node geo-smoke.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" /tmp/geo-reference.json
-          curl --fail --location --retry 3 https://huggingface.co/johnlian/WingCLIP-0.3/resolve/main/labels.json -o /tmp/wing-labels.json
-          node geo-semantic.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site" /tmp/wing-labels.json
-          cd _site/models
-          base=https://zenodo.org/records/24362980/files
-          curl --fail --location --retry 4 --max-time 600 "$base/BirdNET%2B_V3.0_Global_12K_FP16_pruned.onnx?download=1" -o birdnet.onnx
-          curl --fail --location --retry 4 --max-time 180 "$base/BirdNET%2B_V3.0_Global_12K_Labels.csv?download=1" -o birdnet.csv
-          curl --fail --location --retry 4 "$base/MODEL_LICENSE.txt?download=1" -o MODEL_LICENSE.txt
-          curl --fail --location --retry 4 "$base/ACCEPTABLE_USE.txt?download=1" -o ACCEPTABLE_USE.txt
-          printf '%s\n' '6b42d8905f25f856fb8ad91544138914  birdnet.onnx' 'bb25847af8a581e1382081382f01e762  birdnet.csv' '77b299ba50d3119cd28c5a2b6fc0ff4b  MODEL_LICENSE.txt' '92f52349d7a08f74167f096702bac26a  ACCEPTABLE_USE.txt' | md5sum -c -
-          printf '%s\n' 'BirdNET+ V3.0.1 by Mario Lasseck et al. https://doi.org/10.5281/zenodo.24362980' > NOTICE.txt
+          npm install --prefix /tmp/hoot-ort --no-audit --no-fund onnxruntime-web@1.22.0
+          node geo-smoke.cjs /tmp/hoot-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" .ci-models/fixtures/geo-reference.json
+          node geo-semantic.cjs /tmp/hoot-ort/node_modules/onnxruntime-web "$(pwd)/_site" .ci-models/fixtures/wing-labels.json
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

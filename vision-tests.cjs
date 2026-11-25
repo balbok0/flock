@@ -22,3 +22,15 @@ groups[0].reviewStatus='done';assert.equal(V.afterReview(V.reviewQueue(groups),0
 assert.equal(V.reviewStatus({review:[{species:'Bird',count:1}]}),'pending');assert.equal(V.reviewed({reviewStatus:'done',review:[]},[{id:'a'}]).length,0);
 console.log('Review queue: filters, progress, navigation, deferred and empty review behavior passed');
 }
+
+{
+ const p={id:'p',autoBirds:[{visual:[{species:'Chachalaca',similarity:.8},{species:'Rare',similarity:.99,rawAlternative:true}]}]};
+ const e={id:'a'};
+ assert.deepEqual(V.encounterLabel(e,[p]),{title:'Chachalaca',kind:'suggested',photoId:'p'});
+ assert.equal(V.encounterLabel({...e,review:[{species:'Corrected',count:1,photoId:'p'}]},[p]).title,'Corrected');
+ assert.equal(V.encounterLabel({...e,reviewStatus:'done',review:[]},[p]).kind,'empty');
+ assert.equal(V.encounterLabel(e,[{id:'p'}]).kind,'unknown');
+ assert.equal(V.encounterLabel(e,[{id:'p',autoBirds:[{visual:[{species:'Rare',similarity:.9,rawAlternative:true}]}]}]).kind,'range');
+ assert.equal(V.encounterLabel(e,[{id:'p',autoBirds:[{visual:[{species:'A',similarity:.9}]},{visual:[{species:'B',similarity:.8}]}]}]).title,'A · B');
+ console.log('Encounter index labels: suggestions, confirmations, multiple species and empty reviews passed');
+}

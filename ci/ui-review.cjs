@@ -58,6 +58,7 @@ async function review(){
  assert.notEqual(await card.locator('.reviewStage img').getAttribute('src'),old);
  assert.equal(await row.locator('.reviewNumber').textContent(),'2');
  pass('Confirm once across a burst, adjust count, and browse photos without losing confirmation');
+ await page.locator('.queueIndex summary').click();assert.match(await page.locator('.queueIndexItem[aria-current=true]').textContent(),/Rufous-vented Chachalaca/);assert.match(await page.locator('.queueIndexItem[aria-current=true]').textContent(),/Confirmed/);await page.locator('.queueIndex summary').click();pass('Encounter index names confirmed species');
  await screenshot('encounter');
  await card.getByRole('button',{name:'Split / merge encounters',exact:true}).click();
  const dialog=page.locator('dialog[open]');
@@ -118,6 +119,7 @@ async function inference(){
  assert(findings.every(p=>p.detectorVersion),'Detector did not run on every photo');
  assert(findings.some(p=>p.boxes.length>0),'No birds detected in any fixture');
  pass('Real YOLOX and WingCLIP inference completed on all three photos');
+ await page.locator('.queueIndex summary').click();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
  await screenshot('predictions');
  const e=await page.evaluate(()=>state.encounters.find(e=>e.ids.some(id=>state.assets.find(a=>a.id===id)?.autoBirds?.length))?.id);
  if(e){await page.locator('.queueIndex summary').click();const opts=page.locator('.queueIndexItem');const ix=await page.evaluate(id=>{const all=state.encounters.filter(e=>VisionViews.reviewStatus(e)==='pending').sort((a,b)=>Math.min(...a.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity))-Math.min(...b.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity)));return all.findIndex(x=>x.id===id)},e);await opts.nth(ix).click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId===id&&!reviewWriting,e)}

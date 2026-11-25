@@ -33,6 +33,16 @@ function reviewProgress(encounters){const out={total:encounters.length,pending:0
 function nextReview(queue,current,direction=1){if(!queue.length)return null;const i=queue.findIndex(e=>e.id===current);if(i<0)return direction<0?queue.at(-1).id:queue[0].id;return queue[Math.max(0,Math.min(queue.length-1,i+direction))].id}
 // After removing a task from a filtered queue, continue at its former index.
 function afterReview(queue,oldIndex){return queue.length?queue[Math.max(0,Math.min(queue.length-1,oldIndex))].id:null}
-return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,suppress,decode,tiles,observations,reviewed,reviewDraft,suggestions,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,DETECTOR_SIZE,DETECTOR_VERSION};
+// Index labels describe the evidence without implicitly confirming predictions.
+function encounterLabel(e,photos,canonical=x=>x,resolve=v=>v.species){
+ const confirmed=reviewed(e,photos,canonical),proposals=suggestions(e,photos,resolve),local=proposals.filter(v=>v.eligible),status=reviewStatus(e);
+ if(confirmed.length)return {title:confirmed.map(r=>r.species).join(' · '),kind:'confirmed',photoId:confirmed[0].photo.id};
+ if(status==='done')return {title:'No sighting confirmed',kind:'empty',photoId:local[0]?.photoId||photos[0]?.id};
+ if(local.length){const top=local.filter(v=>v.support>0);const picked=(top.length?top:local.slice(0,1));return {title:picked.map(v=>v.species).join(' · '),kind:'suggested',photoId:picked[0].photoId}}
+ if(proposals.length)return {title:proposals[0].species,kind:'range',photoId:proposals[0].photoId};
+ if(e.species)return {title:canonical(e.species),kind:'suggested',photoId:photos[0]?.id};
+ return {title:'Unidentified encounter',kind:'unknown',photoId:photos[0]?.id};
+}
+return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,suppress,decode,tiles,observations,reviewed,reviewDraft,suggestions,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,encounterLabel,DETECTOR_SIZE,DETECTOR_VERSION};
 })();
 if(typeof module!=='undefined')module.exports=VisionViews;

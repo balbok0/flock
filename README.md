@@ -152,3 +152,7 @@ Reference comparisons pin the local evidence photo or matching classified crop a
 ## Browser review QA
 
 The separate Browser review QA workflow exercises Hoot in mobile-sized Chromium using real, attributed Wikimedia Commons bird photos from Trinidad and Tobago (two Rufous-vented Chachalacas and one Blue-gray Tanager). Test photo timestamps are deliberately changed to simulate a burst and another encounter, and GPS metadata is removed for a country-only export test; the original location/date and photographer/license are recorded in the fixture attribution. The review scenario uses real file inputs and UI actions for confirmation, counts, splitting, merging, deferral, reload and offline CSV download. The inference scenario uses the real browser model downloads and YOLOX/WingCLIP inference and records actual top matches, crop and reference previews. Test CSV is disposable and is never submitted to eBird. CI artifacts include screenshots and JSON results. This supplements unit tests; mobile Chromium does not reproduce iOS Safari's native share sheet or device performance.
+
+## v0.29 — Species-first encounter index
+
+Jump to encounter shows a thumbnail, confirmed species or top model suggestions (including multiple distinct top matches), and secondary capture time/photo count and review status. Suggestions are visibly unconfirmed; rare/unknown range matches are explicitly marked. A completed encounter without sightings is labelled accordingly. The active encounter heading uses the same label. This changes presentation only, not inference or export.

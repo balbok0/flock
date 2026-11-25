@@ -26,9 +26,9 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          for f in app.js ml.js merlin.js metadata.js geo.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs; do node --check "$f"; done
+          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs; do node --check "$f"; done
           mkdir -p _site/models _site/vendor
-          cp index.html style.css app.js ml.js merlin.js metadata.js geo.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json _site/
+          cp index.html style.css app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json _site/
           curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/dist/exif-reader.js -o _site/vendor/exif-reader.js
           curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/LICENSE -o _site/vendor/ExifReader-LICENSE
           curl --fail --location --retry 3 https://heic.fyi/samples/exif-gps-date.heic -o /tmp/exif-gps-date.heic
@@ -39,7 +39,12 @@ jobs:
           echo 'd30b7f51ad301889ab193a384c72f1a1  /tmp/geo.zip' | md5sum -c -
           python3 extract-geo.py /tmp/geo.zip _site/models
           python3 -m venv /tmp/flock-geo-venv
-          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6
+          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6 shapely==2.1.1 pyproj==3.7.1
+          ne=https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson
+          curl --fail --location --retry 3 "$ne/ne_10m_admin_0_countries.geojson" -o /tmp/countries.geojson
+          curl --fail --location --retry 3 "$ne/ne_10m_admin_1_states_provinces.geojson" -o /tmp/subdivisions.geojson
+          /tmp/flock-geo-venv/bin/python build-regions.py /tmp/countries.geojson /tmp/subdivisions.geojson _site/regions.json
+          node regions-tests.cjs _site/regions.json
           /tmp/flock-geo-venv/bin/python prepare-geo.py _site/models/geo-v305-fp32.onnx /tmp/geo-reference.json
           npm install --prefix /tmp/flock-ort --no-audit --no-fund onnxruntime-web@1.22.0
           node geo-smoke.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" /tmp/geo-reference.json

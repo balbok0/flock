@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs library-tests.cjs; do node --check "$f"; done
+          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs library-tests.cjs geo-semantic.cjs; do node --check "$f"; done
           node library-tests.cjs
           mkdir -p _site/models _site/vendor
           cp index.html style.css app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
@@ -51,6 +51,8 @@ jobs:
           /tmp/flock-geo-venv/bin/python prepare-geo.py _site/models/geo-v305-fp32.onnx /tmp/geo-reference.json
           npm install --prefix /tmp/flock-ort --no-audit --no-fund onnxruntime-web@1.22.0
           node geo-smoke.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" /tmp/geo-reference.json
+          curl --fail --location --retry 3 https://huggingface.co/johnlian/WingCLIP-0.3/resolve/main/labels.json -o /tmp/wing-labels.json
+          node geo-semantic.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site" /tmp/wing-labels.json
           cd _site/models
           base=https://zenodo.org/records/24362980/files
           curl --fail --location --retry 4 --max-time 600 "$base/BirdNET%2B_V3.0_Global_12K_FP16_pruned.onnx?download=1" -o birdnet.onnx

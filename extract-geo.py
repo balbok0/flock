@@ -18,7 +18,7 @@ for i,r in enumerate(rows):
     sci=get(r,'scientific_name','scientific','sci_name','species')
     bid=get(r,'birdnet_id','birdnetid','id','species_code','code')
     assert sci, list(r)
-    labels.append({'scientific':sci,'id':bid})
+    labels.append({'scientific':sci,'id':bid,'common':get(r,'common_name','english_name','common','name_en'),'ebird':get(r,'ebird_code','ebird_species_code')})
 assert len({x['scientific'] for x in labels})>13000
 (out/'geo-v305-labels.json').write_text(json.dumps(labels,ensure_ascii=False,separators=(',',':')))
 print('Geomodel extracted:',len(labels),'labels')

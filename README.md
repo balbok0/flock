@@ -156,3 +156,7 @@ The separate Browser review QA workflow exercises Hoot in mobile-sized Chromium 
 ## v0.29 — Species-first encounter index
 
 Jump to encounter shows a thumbnail, confirmed species or top model suggestions (including multiple distinct top matches), and secondary capture time/photo count and review status. Suggestions are visibly unconfirmed; rare/unknown range matches are explicitly marked. A completed encounter without sightings is labelled accordingly. The active encounter heading uses the same label. This changes presentation only, not inference or export.
+
+## v0.30 — Durable Safari media storage
+
+IndexedDB now stores media as separate ArrayBuffer records keyed by asset ID, with MIME type and byte length in metadata. Fresh runtime Blobs and object URLs are reconstructed at startup; metadata-only edits do not rewrite media. Existing inline-Blob libraries are migrated when bytes remain readable. Missing files retain all metadata and confirmations and show a reconnect action; reconnecting the original preserves the asset ID. Deleting or clearing media removes its byte record in the same transaction. A WebKit browser QA scenario checks image decoding, WAV metadata, byte hashes after reload, migration and reconnection. Browser storage eviction and actual iPhone Safari behavior remain device-dependent; this is not a backup of the original Photos/Files library.

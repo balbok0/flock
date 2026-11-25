@@ -1,5 +1,5 @@
 'use strict';
-const {chromium,devices}=require('playwright');
+const {chromium,webkit,devices}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const output=path.resolve('.qa-results');fs.mkdirSync(output,{recursive:true});
 const source=path.resolve('.qa-photos');
@@ -12,7 +12,7 @@ async function wait(fn,arg,timeout=30000){await page.waitForFunction(fn,arg,{tim
 async function dismiss(){const b=page.locator('#dismissProgress');if(await b.isVisible())await b.click()}
 async function screenshot(name){await page.screenshot({path:path.join(output,mode+'-'+name+'.png'),fullPage:false})}
 async function start(){
- browser=await chromium.launch({headless:true});
+ browser=await (mode==='media'?webkit:chromium).launch({headless:true});
  const {defaultBrowserType,...device}=devices['iPhone 13'];context=await browser.newContext({...device,acceptDownloads:true,locale:'en-US',timezoneId:'America/Port_of_Spain'});
  // Exercise browser CSV download, not a native OS share sheet.
  await context.addInitScript(()=>Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false}));
@@ -103,6 +103,37 @@ async function review(){
  assert.equal(rows.find(r=>r[0]==='Blue-gray Tanager')[3],'1');
  pass('Offline restart, real CSV preview and download; correct species, counts, TT and blank GPS');
 }
+async function media(){
+ await group();
+ await manualConfirm('Rufous-vented Chachalaca');
+ // PCM WAV fixture for real decoder and persistence checks, not bird ID.
+ const sampleRate=8000,n=16000,wav=Buffer.alloc(44+n*2);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(sampleRate,24);wav.writeUInt32LE(sampleRate*2,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(n*2,40);
+ for(let i=0;i<n;i++)wav.writeInt16LE(Math.round(1000*Math.sin(i*440*2*Math.PI/sampleRate)),44+i*2);
+ await page.locator('#audio').setInputFiles({name:'qa-recording.wav',mimeType:'audio/wav',buffer:wav});
+ await wait(()=>state.assets.length===4&&!importingLibrary);await dismiss();
+ const before=await page.evaluate(async()=>Promise.all(state.assets.map(async a=>({id:a.id,name:a.name,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await a.blob.arrayBuffer())))}))));
+ await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();
+ await wait(()=>{const i=document.querySelector('.reviewStage img');return i?.complete&&i.naturalWidth>0});
+ await page.locator('#mediaReview summary').first().click();await wait(()=>{const a=document.querySelector('#assets audio');return a?.readyState>=1&&a.duration>0});
+ const after=await page.evaluate(async()=>Promise.all(state.assets.map(async a=>({id:a.id,name:a.name,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await a.blob.arrayBuffer())))}))));
+ assert.deepEqual(after,before);assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);
+ pass('WebKit reload restores exact photo and audio bytes, renders image and decodes WAV');
+ // Simulate an old library with inline Blobs, then migrate through the real startup.
+ await page.evaluate(async()=>{const old={...state,assets:state.assets.map(a=>({...a}))};await tx('readwrite',s=>{for(const a of old.assets)s.delete(mediaKey(a.id));return s.put(old,'state')})});
+ await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);
+ const migrated=await page.evaluate(async()=>{const meta=await tx('readonly',s=>s.get('state'));return meta.assets.every(a=>!a.blob&&!a.mediaMissing)});
+ assert(migrated);pass('Legacy inline-Blob library migrates without losing confirmations');
+ // Simulate one unavailable file; reconnect it without changing its ID or sightings.
+ const missing=before[0];await page.evaluate(async id=>{await tx('readwrite',s=>s.delete(mediaKey(id)))},missing.id);
+ await page.reload({waitUntil:'load'});await wait(()=>libraryReady&&state.assets.some(a=>a.mediaMissing));await dismiss();
+ await page.locator('#mediaReview summary').first().click();const notice=page.locator('#assets .mediaWarning').filter({hasText:missing.name}).first();
+ await notice.getByRole('button',{name:'Reconnect original'}).click();
+ await page.locator('dialog[open] input[type=file]').setInputFiles(path.join(source,missing.name));
+ await wait(id=>!reviewWriting&&state.assets.find(a=>a.id===id)?.blob?.size>0,missing.id);
+ assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);pass('Reconnect missing original preserves asset ID and confirmed sighting');
+ await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);assert.equal(await page.evaluate(()=>state.assets.filter(a=>a.mediaMissing).length),0);pass('Reconnected media persists after another reload');
+ await screenshot('restored');
+}
 async function inference(){
  // Genuine model download and inference: no fixture detections or replacement classifier.
  await page.locator('#installVision').click();
@@ -135,4 +166,4 @@ async function inference(){
    await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
 }
-(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();
+(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media')await media();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();

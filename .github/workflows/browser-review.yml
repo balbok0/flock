@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [review, inference]
+        mode: [review, inference, media]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,7 +43,7 @@ jobs:
       - name: Install mobile browser test runner
         run: |
           npm install --no-save --no-package-lock playwright@1.55.0
-          npx playwright install --with-deps chromium
+          if [[ '${{ matrix.mode }}' == media ]]; then npx playwright install --with-deps webkit; else npx playwright install --with-deps chromium; fi
       - name: Run browser review scenario
         env:
           MODE: ${{ matrix.mode }}

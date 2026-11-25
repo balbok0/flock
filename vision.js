@@ -26,6 +26,13 @@ function suggestions(e,photos,resolve=v=>v.species){const all=new Map();function
 for(const p of photos)for(const b of active(p)){const list=b.visual||[],first=list.find(v=>!v.rawAlternative);for(const v of list)record(v,p,v===first)}
 const fallback=photos.find(p=>!active(p).length&&p.manualBirds==null);if(fallback)for(const v of e.visual||[])record(v,fallback,false);
 return [...all.values()].map(r=>({species:r.species,similarity:r.similarity,eligible:r.eligible,support:r.support.size,photos:r.photos.size,count:Math.max(1,...r.counts.values()),photoId:r.photoId})).sort((a,b)=>Number(b.eligible)-Number(a.eligible)||b.support-a.support||b.similarity-a.similarity||a.species.localeCompare(b.species))}
-return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,suppress,decode,tiles,observations,reviewed,reviewDraft,suggestions,DETECTOR_SIZE,DETECTOR_VERSION};
+// Workflow status is independent from the confirmed observations.
+function reviewStatus(e){return e.reviewStatus==='done'?'done':e.reviewStatus==='later'?'later':'pending'}
+function reviewQueue(encounters,filter='pending'){return encounters.filter(e=>filter==='all'||reviewStatus(e)===filter)}
+function reviewProgress(encounters){const out={total:encounters.length,pending:0,later:0,done:0};for(const e of encounters)out[reviewStatus(e)]++;return out}
+function nextReview(queue,current,direction=1){if(!queue.length)return null;const i=queue.findIndex(e=>e.id===current);if(i<0)return direction<0?queue.at(-1).id:queue[0].id;return queue[Math.max(0,Math.min(queue.length-1,i+direction))].id}
+// After removing a task from a filtered queue, continue at its former index.
+function afterReview(queue,oldIndex){return queue.length?queue[Math.max(0,Math.min(queue.length-1,oldIndex))].id:null}
+return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,suppress,decode,tiles,observations,reviewed,reviewDraft,suggestions,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,DETECTOR_SIZE,DETECTOR_VERSION};
 })();
 if(typeof module!=='undefined')module.exports=VisionViews;

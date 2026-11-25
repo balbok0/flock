@@ -12,3 +12,13 @@ const proposals=V.suggestions({},[pA,pB]);assert.equal(proposals[0].species,'Cha
 const oldGroup={confirmed:true,species:'Old',count:2},oldPhotos=[{id:'a',autoBirds:[{confirmed:true,species:'Old'},{confirmed:true,species:'Other'}]}];assert.deepEqual(V.reviewDraft(oldGroup,oldPhotos).map(r=>[r.species,r.count]),[['Old',2],['Other',1]]);assert.deepEqual(V.reviewed({...oldGroup,review:[]},oldPhotos),[]);assert.deepEqual(V.reviewDraft({...oldGroup,review:[{species:'New',count:3,photoId:'missing'}]},oldPhotos),[{species:'New',count:3,photoId:'a'}]);
 console.log('Encounter review: aggregation, conservative suggested counts, old confirmations, explicit undo, authoritative review passed');
 }
+
+{
+const groups=[{id:'a'},{id:'b',reviewStatus:'later'},{id:'c',reviewStatus:'done'},{id:'d',reviewStatus:'unknown'}];
+assert.deepEqual(V.reviewProgress(groups),{total:4,pending:2,later:1,done:1});
+assert.deepEqual(V.reviewQueue(groups).map(e=>e.id),['a','d']);assert.deepEqual(V.reviewQueue(groups,'later').map(e=>e.id),['b']);assert.deepEqual(V.reviewQueue(groups,'done').map(e=>e.id),['c']);
+assert.equal(V.nextReview(groups,'a',-1),'a');assert.equal(V.nextReview(groups,'a',1),'b');assert.equal(V.nextReview([],null),null);
+groups[0].reviewStatus='done';assert.equal(V.afterReview(V.reviewQueue(groups),0),'d');groups[3].reviewStatus='later';assert.equal(V.afterReview(V.reviewQueue(groups),0),null);
+assert.equal(V.reviewStatus({review:[{species:'Bird',count:1}]}),'pending');assert.equal(V.reviewed({reviewStatus:'done',review:[]},[{id:'a'}]).length,0);
+console.log('Review queue: filters, progress, navigation, deferred and empty review behavior passed');
+}

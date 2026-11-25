@@ -112,7 +112,7 @@ async function inference(){
  await wait(()=>!document.querySelector('#runAll').dataset.running&&state.encounters.length===2&&document.querySelector('#activity').textContent.includes('Detection run finished'),null,360000);
  await dismiss();
  const log=await page.locator('#log').textContent();
- assert.match(log,/2 succeeded · 0 failed/);
+ assert.match(log,/2 succeeded[, ·]+0 failed/);
  const findings=await page.evaluate(()=>state.assets.filter(p=>p.kind==='photo').map(p=>({name:p.name,detectorVersion:p.detectorVersion,boxes:(p.autoBirds||[]).map(b=>({box:b.box,confidence:b.confidence,visual:(b.visual||[]).map(v=>({species:Taxonomy.model(v.species,v.scientific,v.code)?.common||v.species,similarity:v.similarity,rawAlternative:!!v.rawAlternative}))}))})));
  result.inference=findings.map(p=>{const expected=cases.find(c=>c.name===p.name).species;return {...p,expected,expectedRanks:p.boxes.map(b=>{const i=b.visual.findIndex(v=>v.species===expected);return i<0?null:i+1})}});
  console.log(JSON.stringify(result.inference,null,2));

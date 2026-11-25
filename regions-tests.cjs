@@ -21,3 +21,5 @@ fields.fallbackCountry.value='';fields.fallbackRegion.value='';sandbox.state.bir
 console.log('Export regression tests passed: selected region, actual GPS, inferred region, manual fallback, missing region and photos without GPS');
 
 const bird={species:'Blue-gray Tanager',confirmed:true,box:{x:.1,y:.1,w:.2,h:.2}},photo1={...p,id:'p1',autoBirds:[bird,bird]},photo2={...p,id:'p2',autoBirds:[bird,{...bird,species:'Other bird'}]};sandbox.state.assets=[photo1,photo2];sandbox.state.encounters=[{ids:['p1','p2'],confirmed:true,species:'Blue-gray Tanager',count:1}];exported=sandbox.exportRows();assert.equal(exported.length,2);assert.equal(exported.find(r=>r[0]==='Blue-gray Tanager')[3],2);assert.equal(exported.find(r=>r[0]==='Other bird')[3],1);
+
+sandbox.state.encounters[0].review=[{species:'Other bird',count:4,photoId:'p2'}];exported=sandbox.exportRows();assert.equal(exported.length,1);assert.equal(exported[0][0],'Other bird');assert.equal(exported[0][3],4);sandbox.state.encounters[0].review=[];assert.throws(()=>sandbox.exportRows(),/Confirm sightings first/);

@@ -4,3 +4,11 @@ const rect={x:.85,y:.02,w:.13,h:.2},crop=V.boxCrop(4000,3000,rect);assert.ok(cro
 const raw=new Float32Array(3549*85);function put(gx,gy,c){const i=(gy*52+gx)*85;raw[i]=.5;raw[i+1]=.5;raw[i+2]=Math.log(4);raw[i+3]=Math.log(4);raw[i+4]=1;raw[i+19]=c}put(10,10,.9);put(11,10,.8);put(40,20,.95);const hits=V.decode(raw,832,832);assert.equal(hits.length,2);assert.ok(hits[0].box.x>.7);assert.equal(V.decode(new Float32Array(3549*85),832,832).length,0);
 const tile={x:400,y:100,w:600,h:600},mapped=V.decode(raw,1000,1000,tile);assert.ok(mapped.every(h=>h.box.x>=.4&&h.box.y>=.1));assert.equal(V.tiles(1000,2000).length,4);
 const bird={species:'Bird',confirmed:true,box:rect},p1={autoBirds:[bird,bird]},p2={autoBirds:[bird,{...bird,species:'Other'}]},p3={autoBirds:[bird],manualBirds:[]};assert.deepEqual(V.observations([p1,p2,p3]).map(o=>[o.species,o.count]),[['Bird',2],['Other',1]]);assert.equal(V.active(p3).length,0);assert.equal(V.active({...p3,manualBirds:null}).length,1);console.log('Bird boxes, YOLOX decode/NMS, tiled coordinates, manual precedence and count tests passed');
+
+{
+const v=(species,similarity,rawAlternative=false)=>({species,similarity,rawAlternative});
+const pA={id:'a',autoBirds:[{visual:[v('Chachalaca',.7),v('Tanager',.5)]},{visual:[v('Chachalaca',.65),v('Rare',.99,true)]}]},pB={id:'b',autoBirds:[{visual:[v('Chachalaca',.6),v('Tanager',.55)]}]};
+const proposals=V.suggestions({},[pA,pB]);assert.equal(proposals[0].species,'Chachalaca');assert.equal(proposals[0].support,2);assert.equal(proposals[0].count,2);assert.equal(proposals.find(x=>x.species==='Rare').eligible,false);assert.equal(proposals.find(x=>x.species==='Tanager').count,1);
+const oldGroup={confirmed:true,species:'Old',count:2},oldPhotos=[{id:'a',autoBirds:[{confirmed:true,species:'Old'},{confirmed:true,species:'Other'}]}];assert.deepEqual(V.reviewDraft(oldGroup,oldPhotos).map(r=>[r.species,r.count]),[['Old',2],['Other',1]]);assert.deepEqual(V.reviewed({...oldGroup,review:[]},oldPhotos),[]);assert.deepEqual(V.reviewDraft({...oldGroup,review:[{species:'New',count:3,photoId:'missing'}]},oldPhotos),[{species:'New',count:3,photoId:'a'}]);
+console.log('Encounter review: aggregation, conservative suggested counts, old confirmations, explicit undo, authoritative review passed');
+}

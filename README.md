@@ -1,4 +1,6 @@
-# Flock PWA v0.1
+# Flock
+
+[Credits and references](#credits-and-references)
 
 Static mobile prototype: https://balbok0.github.io/flock/. Open in Safari, then Share > Add to Home Screen. Open online once to cache the app shell.
 
@@ -44,3 +46,45 @@ Export maps each observation's actual GPS to country and first-level subdivision
 
 ## v0.14
 Visible eBird fields mirror selected/inferred birding region. CI downloads eBird's official workbook linked by its spreadsheet import guide (attachment 48293281603, 18 Apr 2023), validates coverage, and bundles a crosswalk. Unmatched subdivisions use blank state codes. Actual GPS takes priority for individual records; validated fallback codes are optional. The workbook is a dated snapshot; authenticated import remains untested.
+
+
+## Credits and references
+
+Flock is an independent, noncommercial birding post-processing project. We thank the researchers, engineers, citizen scientists, photographers, and sound recordists whose work makes it possible. Flock is not affiliated with or endorsed by any of the following projects.
+
+### BirdNET+ — acoustic and geographic identification
+
+- Lasseck, M., Eibl, M., Klinck, H., & Kahl, S. (2026). [BirdNET+ V3.0 model files, version 3.0.1](https://doi.org/10.5281/zenodo.24362980). Zenodo. Includes the pruned FP16 acoustic model and Geomodel V3.0.5 (FP32), used by Flock.
+- [BirdNET+ source and examples](https://github.com/birdnet-team/birdnet-V3.0-dev), [Geomodel training code](https://github.com/birdnet-team/geomodel), [BirdNET project](https://birdnet.cornell.edu/).
+- Kahl, S., Wood, C. M., Eibl, M., & Klinck, H. (2021). [BirdNET: A deep learning solution for avian diversity monitoring](https://doi.org/10.1016/j.ecoinf.2021.101236). Ecological Informatics, 61, 101236. Foundational paper, not a paper specifically describing the V3.0.1 release.
+- Model weights: Apache 2.0; consult the release's model license and acceptable-use guidance. Flock's regional aggregation and combined ranking are its own heuristics.
+- Thanks to the BirdNET contributors and training-data providers, including [Macaulay Library](https://www.macaulaylibrary.org/), [iNaturalist](https://www.inaturalist.org/), [Xeno-canto](https://xeno-canto.org/), [Animal Sound Archive Berlin](https://www.tierstimmenarchiv.de/), and [Observation.org](https://observation.org/).
+
+### WingCLIP — visual identification
+
+- Lian, John. [WingCLIP 0.3 model card](https://huggingface.co/johnlian/WingCLIP-0.3) and [WingDex repository](https://github.com/jlian/wingdex). Flock uses the INT8 visual encoder and corresponding classifier embeddings and labels. WingCLIP has no separate paper; its model card specifies the following upstream references.
+- Wu et al. (2023). [TinyCLIP: CLIP Distillation via Affinity Mimicking and Weight Inheritance](https://arxiv.org/abs/2309.12314). ICCV.
+- Gu et al. (2025). [BioCLIP 2: Emergent Properties from Scaling Hierarchical Contrastive Learning](https://arxiv.org/abs/2505.23883). NeurIPS.
+- Stevens et al. (2024). BioCLIP: A Vision Foundation Model for the Tree of Life. [CVPR paper](https://openaccess.thecvf.com/content/CVPR2024/html/Stevens_BioCLIP_A_Vision_Foundation_Model_for_the_Tree_of_Life_CVPR_2024_paper.html).
+- Wortsman et al. (2022). [Robust fine-tuning of zero-shot models](https://arxiv.org/abs/2109.01903). CVPR.
+- Faghri et al. (2025). [MobileCLIP2: Improving Multi-Modal Reinforced Training](https://arxiv.org/abs/2508.20691).
+- Van Horn et al. (2015). Building a Bird Recognition App and Large Scale Dataset With Citizen Scientists: The Fine Print in Fine-Grained Dataset Collection. CVPR (NABirds evaluation dataset).
+- Radford et al. (2021). [Learning Transferable Visual Models From Natural Language Supervision](https://arxiv.org/abs/2103.00020). ICML.
+- Ilharco et al. (2021). [OpenCLIP](https://doi.org/10.5281/zenodo.5143773).
+- Weights are [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), not the MIT license of the WingDex source. Training images come from [iNaturalist Open Data](https://github.com/inaturalist/inaturalist-open-data); see the upstream WingDex repository's per-photo attribution records and model card. Flock does not redistribute the training images. Commercial use of these weights is not permitted under their published license.
+
+### Merlin, eBird and Cornell Lab
+
+- [Merlin Bird ID](https://merlin.allaboutbirds.org/) — user-supplied recordings; Flock does not use Merlin's private models or SDK.
+- [eBird](https://ebird.org/) — checklist export destination; [spreadsheet import format and official region-code workbook](https://support.ebird.org/en/support/solutions/articles/48000907878-upload-spreadsheet-data-to-ebird).
+- Sullivan, B. L., Wood, C. L., Iliff, M. J., Bonney, R. E., Fink, D., & Kelling, S. (2009). eBird: a citizen-based bird observation network in the biological sciences. Biological Conservation, 142, 2282–2292. [Official citation guidance](https://science.ebird.org/en/use-ebird-data/citation).
+- [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home/) and [Macaulay Library](https://www.macaulaylibrary.org/) — thanks to their teams and the worldwide birding community.
+
+### Supporting software and data
+
+- [Natural Earth](https://www.naturalearthdata.com/) v5.1.2, public-domain geographic boundaries.
+- [ONNX Runtime Web](https://onnxruntime.ai/) 1.22.0, inference runtime.
+- [ExifReader](https://github.com/mattiasw/ExifReader) 4.52.0, photo metadata parsing.
+- [HEIC.FYI](https://heic.fyi/) test image for metadata regression tests.
+
+Refer to each project's license and attribution requirements; these references do not grant additional rights.

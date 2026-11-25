@@ -120,3 +120,7 @@ The original taxonomy CSV is retained beside its compact JSON in `prebuilt/taxon
 ## v0.21 — Region-only eBird exports
 
 Exact GPS is optional for confirmed photo and audio observations. Keep real coordinates when present; otherwise use the selected or inferred birding region (or explicit fallback codes) with blank coordinate columns. The eBird import step can refine region-only locations. No region centroid is substituted for missing GPS.
+
+## v0.22 — Canonical species spelling
+
+Resolve unambiguous gray/grey spelling variants for model labels, species search, and exports. Migrate saved confirmed species names on library open without changing confirmation status or rerunning inference; keep unknown names for manual review. Audio confirmations can also be removed individually. Exact names take precedence and ambiguous spelling aliases do not auto-resolve.

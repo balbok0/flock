@@ -18,6 +18,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/configure-pages@v5
       - name: Prepare site and verified BirdNET assets
         shell: bash
@@ -36,7 +39,7 @@ jobs:
           echo 'd30b7f51ad301889ab193a384c72f1a1  /tmp/geo.zip' | md5sum -c -
           python3 extract-geo.py /tmp/geo.zip _site/models
           python3 -m venv /tmp/flock-geo-venv
-          /tmp/flock-geo-venv/bin/pip install --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6
+          /tmp/flock-geo-venv/bin/pip install --only-binary=:all: --disable-pip-version-check onnx==1.18.0 onnxruntime==1.22.1 numpy==2.2.6
           /tmp/flock-geo-venv/bin/python prepare-geo.py _site/models/geo-v305-fp32.onnx /tmp/geo-reference.json
           npm install --prefix /tmp/flock-ort --no-audit --no-fund onnxruntime-web@1.22.0
           node geo-smoke.cjs /tmp/flock-ort/node_modules/onnxruntime-web "$(pwd)/_site/models" /tmp/geo-reference.json

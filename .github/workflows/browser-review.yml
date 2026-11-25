@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [review, inference, media]
+        mode: [review, inference, media, media-chromium]
     steps:
       - uses: actions/checkout@v4
         with:

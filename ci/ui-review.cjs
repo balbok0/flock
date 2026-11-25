@@ -117,12 +117,14 @@ async function media(){
  await page.locator('#mediaReview summary').first().click();await wait(()=>{const a=document.querySelector('#assets audio');return a?.readyState>=1&&a.duration>0});
  const after=await page.evaluate(async()=>Promise.all(state.assets.map(async a=>({id:a.id,name:a.name,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await a.blob.arrayBuffer())))}))));
  assert.deepEqual(after,before);assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);
- pass('WebKit reload restores exact photo and audio bytes, renders image and decodes WAV');
+ pass((mode==='media'?'WebKit':'Chromium')+' reload restores exact photo and audio bytes, renders image and decodes WAV');
+ if(mode==='media-chromium'){
  // Simulate an old library with inline Blobs, then migrate through the real startup.
  await page.evaluate(async()=>{const old={...state,assets:state.assets.map(a=>({...a}))};await tx('readwrite',s=>{for(const a of old.assets)s.delete(mediaKey(a.id));return s.put(old,'state')})});
  await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);
  const migrated=await page.evaluate(async()=>{const meta=await tx('readonly',s=>s.get('state'));return meta.assets.every(a=>!a.blob&&!a.mediaMissing)});
  assert(migrated);pass('Legacy inline-Blob library migrates without losing confirmations');
+ }
  // Simulate one unavailable file; reconnect it without changing its ID or sightings.
  const missing=before[0];await page.evaluate(async id=>{await tx('readwrite',s=>s.delete(mediaKey(id)))},missing.id);
  await page.reload({waitUntil:'load'});await wait(()=>libraryReady&&state.assets.some(a=>a.mediaMissing));await dismiss();
@@ -133,6 +135,7 @@ async function media(){
  assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);pass('Reconnect missing original preserves asset ID and confirmed sighting');
  await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await dismiss();await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);assert.equal(await page.evaluate(()=>state.assets.filter(a=>a.mediaMissing).length),0);pass('Reconnected media persists after another reload');
  await screenshot('restored');
+ await context.setOffline(true);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);await wait(()=>document.querySelector('.reviewStage img')?.naturalWidth>0);pass('Offline reload restores the photo without a network request');
 }
 async function inference(){
  // Genuine model download and inference: no fixture detections or replacement classifier.
@@ -150,7 +153,7 @@ async function inference(){
  assert(findings.every(p=>p.detectorVersion),'Detector did not run on every photo');
  assert(findings.some(p=>p.boxes.length>0),'No birds detected in any fixture');
  pass('Real YOLOX and WingCLIP inference completed on all three photos');
- await page.locator('.queueIndex summary').click();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
+ await page.locator('.queueIndex summary').click();await page.locator('.queueIndexItem').first().waitFor();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
  await screenshot('predictions');
  const e=await page.evaluate(()=>state.encounters.find(e=>e.ids.some(id=>state.assets.find(a=>a.id===id)?.autoBirds?.length))?.id);
  if(e){if(!await page.locator('.queueIndex').evaluate(n=>n.open))await page.locator('.queueIndex summary').click();const opts=page.locator('.queueIndexItem');const ix=await page.evaluate(id=>{const all=state.encounters.filter(e=>VisionViews.reviewStatus(e)==='pending').sort((a,b)=>Math.min(...a.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity))-Math.min(...b.ids.map(id=>Date.parse(state.assets.find(p=>p.id===id)?.time)||Infinity)));return all.findIndex(x=>x.id===id)},e);await opts.nth(ix).click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId===id&&!reviewWriting,e)}
@@ -166,4 +169,4 @@ async function inference(){
    await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
 }
-(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media')await media();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();
+(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media'||mode==='media-chromium')await media();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();

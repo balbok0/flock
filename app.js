@@ -4,11 +4,11 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 function btn(text,fn,cls='secondary'){const b=el('button',text,cls);b.onclick=()=>Promise.resolve(fn()).catch(err=>alert(err.message));return b}
 function field(value,change,type='text'){const n=el('input');n.type=type;if(type==='number')n.step='any';n.value=value;n.onchange=()=>Promise.resolve(change(n.value)).catch(err=>alert(err.message));return n}
 function label(text,n){const l=el('label',text+' ');l.append(n);return l}
-function tx(mode,fn){return new Promise((resolve,reject)=>{const t=db.transaction('data',mode),r=fn(t.objectStore('data'));t.oncomplete=()=>resolve(r.result);t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error||Error('Storage aborted'));})}
+function tx(mode,fn){return new Promise((resolve,reject)=>{const t=db.transaction('data',mode);let r;try{r=fn(t.objectStore('data'))}catch(err){try{t.abort()}catch{}reject(err);return}t.oncomplete=()=>resolve(r.result);t.onerror=()=>reject(t.error||Error('Local storage request failed'));t.onabort=()=>reject(t.error||Error('Storage aborted'));})}
 // Store bytes separately from metadata; WebKit's IndexedDB Blob backing files
 // can become unreadable after reload or when the parent record is rewritten.
 const mediaKey=id=>'media:'+id;
-let savedMedia=new Map(),persistTail=Promise.resolve();
+let savedMedia=new Map(),savedMediaIds=new Set(),persistTail=Promise.resolve();
 async function persistLibrary(next){
  const assets=next.assets.map(a=>({...a})),snapshot={...structuredClone({...next,assets:[]}),assets:assets.map(({blob,...a})=>structuredClone(a))};
  const task=persistTail.then(async()=>{
@@ -18,17 +18,16 @@ async function persistLibrary(next){
  if(savedMedia.get(a.id)!==blob){const bytes=await blob.arrayBuffer();if(bytes.byteLength!==blob.size)throw Error('Incomplete media read: '+a.name);writes.push([mediaKey(a.id),{bytes,type:blob.type}])}
  keep.set(a.id,blob)}else meta.mediaMissing=true;
  }
- await tx('readwrite',s=>{for(const [key,value] of writes)s.put(value,key);for(const id of savedMedia.keys())if(!keep.has(id))s.delete(mediaKey(id));return s.put(snapshot,'state')});
- savedMedia=keep;
+ await tx('readwrite',s=>{for(const [key,value] of writes)s.put(value,key);const ids=new Set(assets.map(a=>a.id));for(const id of savedMediaIds)if(!ids.has(id))s.delete(mediaKey(id));return s.put(snapshot,'state')});
+ savedMedia=keep;savedMediaIds=new Set(assets.map(a=>a.id));
  });persistTail=task.catch(()=>{});return task
 }
 async function restoreMedia(library){
- let changed=false;for(const a of library.assets){const legacy=a.blob;try{
- const record=await tx('readonly',s=>s.get(mediaKey(a.id)));
+ let changed=false;for(const a of library.assets){savedMediaIds.add(a.id);const legacy=a.blob;const record=await tx('readonly',s=>s.get(mediaKey(a.id)));try{
  if(record?.bytes instanceof ArrayBuffer&&record.bytes.byteLength>0&&(!a.mediaSize||a.mediaSize===record.bytes.byteLength)){a.blob=new Blob([record.bytes],{type:record.type||a.mediaType||''});savedMedia.set(a.id,a.blob);if(a.mediaMissing||legacy){delete a.mediaMissing;changed=true}}
  else if(legacy instanceof Blob&&legacy.size>0){a.mediaSize=legacy.size;a.mediaType=legacy.type;const bytes=await legacy.arrayBuffer();if(bytes.byteLength!==legacy.size)throw Error('Incomplete legacy file');a.blob=new Blob([bytes],{type:legacy.type});delete a.mediaMissing;changed=true}
  else throw Error('Saved file bytes unavailable');
- }catch(err){a.mediaSize=a.mediaSize||legacy?.size||null;a.mediaType=a.mediaType||legacy?.type||'';a.blob=null;if(!a.mediaMissing||legacy)changed=true;a.mediaMissing=true;UI.note('Media needs reconnecting: '+a.name+' · '+err.message)}
+ }catch(err){a.mediaSize=a.mediaSize||legacy?.size||null;a.mediaType=a.mediaType||legacy?.type||'';a.blob=null;if(!a.mediaMissing||legacy)changed=true;a.mediaMissing=true;UI.note('Media needs reconnecting: '+a.name+' · '+(err?.message||String(err)))}
  }return changed
 }
 async function save(redraw=true){await persistLibrary(state);if(redraw)render()}

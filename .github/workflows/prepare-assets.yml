@@ -5,13 +5,13 @@ on:
       refresh:
         description: Asset bundles to regenerate (auto = missing or stale)
         type: choice
-        options: [auto, models, regions, all]
+        options: [auto, models, regions, taxonomy, all]
         default: auto
   # One-time bootstrap: the sentinel is removed by the successful asset commit.
   # Ordinary source pushes never trigger this workflow.
   push:
     branches: [main]
-    paths: ['prebuilt/BOOTSTRAP']
+    paths: ['prebuilt/BOOTSTRAP', 'prebuilt/TAXONOMY_BOOTSTRAP']
 permissions:
   contents: write
   actions: write
@@ -71,6 +71,14 @@ jobs:
           test "$failed" = 0
           (cd .ci-models && sha256sum -c SHA256SUMS)
           (cd .ci-regions && sha256sum -c SHA256SUMS)
+      - name: Prepare eBird taxonomy
+        env:
+          REFRESH: ${{ inputs.refresh || 'auto' }}
+        run: |
+          if [[ "$REFRESH" == all || "$REFRESH" == taxonomy || ! -f prebuilt/taxonomy/taxonomy.json ]]; then
+            bash ci/prepare-taxonomy.sh
+          fi
+          rm -f prebuilt/TAXONOMY_BOOTSTRAP
       - name: Test complete site before committing assets
         run: bash ci/test-site.sh .ci-models .ci-regions
       - name: Commit verified assets and explicitly trigger deployment

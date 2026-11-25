@@ -5,6 +5,6 @@ function report(message,done,total,detail){by('activityDock').hidden=false;by('d
 function note(message){log.push(new Date().toISOString()+' '+message);if(log.length>100)log.shift();by('log').textContent=log.join('\n')}
 function fail(e){const msg=e?.message||String(e);report('Error: '+msg,0,100,'See activity log for details.');by('dismissProgress').hidden=false;note('ERROR '+msg);return msg}
 window.addEventListener('error',e=>fail(e.error||e.message));window.addEventListener('unhandledrejection',e=>fail(e.reason));
-by('copyLog').onclick=async()=>{const s='Hoot v0.19\n'+navigator.userAgent+'\n'+log.join('\n');try{await navigator.clipboard.writeText(s);by('copyLog').textContent='Copied'}catch{prompt('Copy diagnostics',s)}};
+by('copyLog').onclick=async()=>{const s='Hoot v0.20\n'+navigator.userAgent+'\n'+log.join('\n');try{await navigator.clipboard.writeText(s);by('copyLog').textContent='Copied'}catch{prompt('Copy diagnostics',s)}};
 by('dismissProgress').onclick=()=>by('activityDock').hidden=true;function resetLog(){log.length=0;by('log').textContent=''}return {report,note,fail,resetLog};
 })();

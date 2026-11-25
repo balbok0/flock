@@ -7,7 +7,10 @@ regions="$2"
 rm -rf _site
 mkdir -p _site
 cp -a "$models/site/." "$regions/site/." _site/
-cp index.html style.css app.js ml.js merlin.js metadata.js geo.js vision.js regions.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
+cp index.html style.css app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
+cp prebuilt/taxonomy/taxonomy.json _site/
+(cd prebuilt/taxonomy && sha256sum -c SHA256SUMS)
+node taxonomy-tests.cjs _site/taxonomy.json
 for f in *.js *.cjs; do node --check "$f"; done
 node library-tests.cjs
 node geo-tests.cjs

@@ -12,9 +12,9 @@ const sciKey=s=>aliases.get(key(s))||key(s);
 const commonKey=s=>key(s).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 function labelMap(labels,values){if(labels.length!==values.length)throw Error('Geomodel label/output mismatch');const sci=new Map(),id=new Map(),common=new Map(),ambiguous=new Set();for(let i=0;i<labels.length;i++){const raw=Number(values[i]),l=labels[i];if(!Number.isFinite(raw)||raw< -1e-6||raw>1+1e-6)throw Error('Invalid occurrence score');const p=Math.max(0,Math.min(1,raw));for(const [map,k] of [[sci,sciKey(l.scientific)],[id,key(l.id)]])if(k)map.set(k,Math.max(map.get(k)??0,p));const c=commonKey(l.common);if(c){const old=common.get(c),name=sciKey(l.scientific);if(old&&old.name!==name)ambiguous.add(c);else common.set(c,{name,p:Math.max(old?.p??0,p)})}}for(const c of ambiguous)common.delete(c);return {sci,id,common}}
 function occurrence(m,scientific,id,common){if(!m)return null;return m.sci.get(sciKey(scientific))??m.id.get(key(id))??m.common?.get(commonKey(common))?.p??null}
-function audioRank(s,p){return p===null?s:s*(.35+.65*Math.sqrt(p))}
+function audioRank(s,p){return s}
 const LOCAL_MIN=.01;
-function photoRank(s,p,match=false){return s+(match?.025:0)+(p===null?0:.06*Math.log(Math.max(.00001,p)))}
+function photoRank(s,p,match=false){return s+(match?.025:0)}
 function tier(p){return p==null?'unknown':p>=LOCAL_MIN?'local':'unlikely'}
 function candidates(scores,n=8,hasPrior=false){const ranked=[...scores].sort((a,b)=>b.rank-a.rank),raw=[...scores].sort((a,b)=>b.similarity-a.similarity);if(!hasPrior){const out=ranked.slice(0,n);if(raw[0]&&!out.includes(raw[0]))out.push({...raw[0],rawAlternative:true});return out}const local=ranked.filter(s=>tier(s.occurrence)==='local').slice(0,n);const alternatives=raw.filter(s=>tier(s.occurrence)!=='local').slice(0,5);if(raw[0]&&!local.includes(raw[0])&&!alternatives.includes(raw[0]))alternatives.unshift(raw[0]);return [...local,...alternatives.map(s=>({...s,rawAlternative:true}))]}
 return {week,context,groupContext,labelMap,occurrence,audioRank,photoRank,candidates,tier};

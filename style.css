@@ -33,3 +33,5 @@ input[type=file]{display:block;width:100%;margin:5px 0 15px;padding:10px;backgro
 .mediaWarning{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;padding:10px;font-size:13px;color:#584329;background:#f6eddb;border-radius:8px}.reviewStage .mediaWarning{max-width:95%;z-index:2}.mediaWarning button{min-height:44px}
 
 .reviewFrame img[hidden],#assets audio[hidden]{display:none}
+
+.reviewNav .photoActionsButton{font-size:22px;line-height:1;min-width:44px;min-height:44px;margin-left:auto}.photoRemovalChoice{border-top:1px solid #dce2d6;margin-top:10px;padding-top:8px}.photoRemovalChoice button{min-height:44px}.reviewExtraDialog>button.danger{display:block;width:100%;min-height:44px;margin:8px 0}

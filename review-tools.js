@@ -21,6 +21,20 @@ function segments(asset,detections,resolve=d=>d.species){
 function clock(s){s=Math.max(0,Math.floor(s));const m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')}
 function groups(rows){const out=new Map();for(const row of rows){const key=JSON.stringify(row.slice(5,13)),entry=out.get(key)||{name:row[5],lat:row[6],lon:row[7],date:row[8],time:row[9],region:row[10],country:row[11],protocol:row[12],rows:[]};entry.rows.push({species:row[0],count:row[3]});out.set(key,entry)}return [...out.values()]}
 function confirmedTime(asset,species,fallback){const offset=asset.heardOffsets&&Object.hasOwn(asset.heardOffsets,species)?asset.heardOffsets[species]:null;const start=Date.parse(asset.time);return Number.isFinite(offset)&&offset>=0&&Number.isFinite(start)&&Number.isFinite(start+offset*1000)&&Math.abs(start+offset*1000)<=8.64e15?new Date(start+offset*1000).toISOString():fallback||asset.time}
-return {split,merge,segments,clock,groups,confirmedTime};
+// Remove only selected local assets. A review belongs to an encounter; if
+// its evidence photo is removed, require an explicit retain/discard choice.
+function removeMedia(library,ids,{keepLinked=false,canonical=x=>x,V=VisionViews}={}){
+ const removed=new Set(ids),assets=library.assets.filter(a=>!removed.has(a.id)),byId=new Map(library.assets.map(a=>[a.id,a])),encounters=[];
+ for(const e of library.encounters){
+  if(!e.ids.some(id=>removed.has(id))){encounters.push(e);continue}
+  const photos=e.ids.map(id=>byId.get(id)).filter(Boolean).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)),remaining=photos.filter(p=>!removed.has(p.id));
+  if(!remaining.length)continue;
+  const review=V.reviewDraft(e,photos,canonical),linked=review.some(r=>removed.has(r.photoId));
+  const nextReview=review.flatMap(r=>!removed.has(r.photoId)?[r]:keepLinked?[{...r,photoId:remaining[0].id}]:[]);
+  encounters.push({...e,ids:e.ids.filter(id=>!removed.has(id)),review:nextReview,reviewStatus:linked?'pending':e.reviewStatus,confirmed:false,species:'',speciesCode:null,count:1,visual:[]});
+ }
+ return {...library,assets,encounters,detections:library.detections.filter(d=>!removed.has(d.assetId))};
+}
+return {split,merge,segments,clock,groups,confirmedTime,removeMedia};
 })();
 if(typeof module!=='undefined')module.exports=ReviewTools;

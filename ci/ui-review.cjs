@@ -17,7 +17,7 @@ async function start(){
  // Exercise browser CSV download, not a native OS share sheet.
  await context.addInitScript(()=>Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false}));
  page=await context.newPage();page.setDefaultTimeout(20000);
- page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{if(d.type()==='confirm'&&/Merge these two encounters|Finish this encounter/.test(d.message()))await d.accept();else{alerts.push(d.message());await d.dismiss()}});
+ page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{if(d.type()==='confirm'&&/Merge these two encounters|Finish this encounter|No birds in this encounter|Remove this last photo/.test(d.message()))await d.accept();else{alerts.push(d.message());await d.dismiss()}});
  await page.goto(base,{waitUntil:'load'});
  await wait(()=>document.querySelector('#status').textContent.includes('Offline shell ready')&&Taxonomy.isReady()&&regionReady);
  await dismiss();await page.locator('#birdCountry').selectOption('TT');
@@ -102,6 +102,8 @@ async function review(){
  assert.equal(rows.find(r=>r[0]==='Rufous-vented Chachalaca')[3],'2');
  assert.equal(rows.find(r=>r[0]==='Blue-gray Tanager')[3],'1');
  pass('Offline restart, real CSV preview and download; correct species, counts, TT and blank GPS');
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();await page.locator('.queueTabs button').filter({hasText:/^Done/}).click();await wait(()=>state.reviewFilter==='done'&&!reviewWriting);await page.locator('.encounterReview').getByRole('button',{name:'Show photo 1',exact:true}).click();await page.locator('.encounterReview').getByRole('button',{name:'Photo actions',exact:true}).click();await dialog.getByRole('button',{name:'Remove this photo',exact:true}).click();await dialog.getByRole('button',{name:'Keep confirmed sightings',exact:true}).click();await wait(()=>state.assets.length===2&&!reviewWriting);assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);assert.equal(await page.evaluate(()=>state.encounters.find(e=>e.id===state.reviewCursor).ids.length),1);pass('Remove displayed photo while retaining its encounter confirmation');
+ await page.locator('.encounterReview').getByRole('button',{name:'Photo actions',exact:true}).click();await dialog.getByRole('button',{name:'No birds in this encounter',exact:true}).click();await wait(()=>state.assets.length===1&&!reviewWriting);assert.equal(await page.evaluate(()=>state.encounters.length),1);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);assert.equal(await page.evaluate(()=>state.assets.length),1);assert.equal(await page.evaluate(()=>state.encounters.flatMap(e=>e.review||[]).some(r=>r.species==='Rufous-vented Chachalaca')),false);pass('Reject entire encounter, remove its sightings, and persist after offline reload');
 }
 async function media(){
  await group();

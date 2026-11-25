@@ -164,3 +164,7 @@ IndexedDB now stores media as separate ArrayBuffer records keyed by asset ID, wi
 ## v0.31 — Media recovery hardening
 
 Do not turn a failed IndexedDB read into a missing-file migration; stop startup instead of overwriting the original library. Track saved asset IDs separately so clearing/deleting also removes corrupt media records. Display a reconnect action for audio decode failures. Browser tests exercise reload/reconnection in WebKit and Chromium; the legacy inline-Blob write simulation runs in Chromium because WebKit rejected the attempted old-format write even after successful byte-based reload. Both modes test offline image recovery.
+
+## v0.32 — Remove non-bird photos directly in Review
+
+The photo viewer's overflow menu offers Remove this photo and No birds in this encounter. Removing a photo advances within the group; removing the last photo or rejecting the group requires confirmation and removes the encounter's sightings. If a removed photo is linked to confirmed species in a surviving encounter, explicitly choose to retain those group sightings (relink to a remaining photo) or discard them; the encounter returns to pending review. Other confirmations remain untouched. The same path handles file-detail deletion. Media bytes and metadata are deleted atomically in local storage, never from the device's original Photos/Files library.

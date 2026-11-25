@@ -169,7 +169,7 @@ async function guides(){
  // QA download a bounded real subset of the computed region, not an entire
  // regional pack on every CI push. Production UI downloads the full list.
  const s=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);
- assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');await d.getByRole('button',{name:'Close',exact:true}).click();await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);pass('Downloaded reference thumbnail appears directly in species row');
+ assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');const resumed=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);assert(resumed.complete);assert.equal(resumed.done,p.rows.length);assert.equal(resumed.failed,0);pass('Resume reuses all downloaded reference images');await d.getByRole('button',{name:'Close',exact:true}).click();await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);pass('Downloaded reference thumbnail appears directly in species row');
  await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);
  assert.match(await d.textContent(),/Photo:.*CC/);await screenshot('guide-online');await d.getByRole('button',{name:'Close',exact:true}).click();

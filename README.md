@@ -136,3 +136,7 @@ One photo encounter has a fixed-size photo viewer, thumbnails, box editing, and 
 ## v0.25 — Focused encounter review
 
 Review one encounter at a time with a persistent queue (To review, Later, Done, All), reviewed/total progress, previous/next and a jump index. Species confirmations remain independent of the explicit encounter completion status: Done and Review later do not create sightings, and finishing without a sighting asks for confirmation. Existing confirmations and export semantics remain unchanged; previously reviewed libraries start with pending tasks until explicitly marked done. Navigation and statuses persist in IndexedDB. A single encounter is mounted, its photo URLs are released on navigation, and the initial photo favors the strongest eligible suggestion. Swipe the displayed photo to browse its burst; edit boxes or hide overlays as needed. Audio and file metadata are tucked into a separate expandable section. In-device usability remains unverified.
+
+## v0.26 — Review navigation polish
+
+Completing or navigating an encounter returns the viewport to the queue header. A sticky compact Done action is always available, including when viewing photo evidence. Allow pinch zoom alongside photo swipes.

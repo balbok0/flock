@@ -26,7 +26,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs; do node --check "$f"; done
+          for f in app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js tests.cjs geo-tests.cjs geo-smoke.cjs regions-tests.cjs library-tests.cjs; do node --check "$f"; done
+          node library-tests.cjs
           mkdir -p _site/models _site/vendor
           cp index.html style.css app.js ml.js merlin.js metadata.js geo.js regions.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
           curl --fail --location --retry 3 https://cdn.jsdelivr.net/npm/exifreader@4.52.0/dist/exif-reader.js -o _site/vendor/exif-reader.js

@@ -93,3 +93,6 @@ Refer to each project's license and attribution requirements; these references d
 
 ## v0.16 — Hoot
 Renamed the application, manifest, recovery UI, diagnostics and export filenames. The repository and Pages URL remain `/flock/` for compatibility with installed applications. The legacy IndexedDB database name, model cache, and model self-test keys deliberately remain unchanged to preserve existing local media and downloads. Original project materials are CC BY-NC 4.0; third-party terms are unaffected.
+
+## v0.17 — Start a new season
+Settings > Clear library removes the app's local copies of photos and recordings, all detections, groups and confirmed sightings, and resets the birding region and export inputs. A confirmation dialog shows media counts. The replacement state is written atomically before the UI changes; the operation is blocked during imports and inference. Original source files, model caches, model self-test state and app shell remain untouched. Export your eBird checklist before clearing if you want to keep it. This is a destructive reset, not an archive or undo operation.

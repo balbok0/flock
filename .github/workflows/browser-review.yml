@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [review, inference, media, media-chromium]
+        mode: [review, inference, media, media-chromium, guides]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,8 +31,9 @@ jobs:
         run: |
           mkdir -p _site
           cp -a prebuilt/models/site/. prebuilt/regions/site/. _site/
-          cp index.html style.css review-tools.js review-extras.js app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
+          cp index.html style.css guides.js guide-ui.js review-tools.js review-extras.js app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
           cp prebuilt/taxonomy/taxonomy.json _site/
+          bash ci/prepare-guides.sh _site
           mkdir -p _site/models
           curl --fail --location --retry 3 --silent --show-error https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx -o _site/models/yolox-nano-0.1.1rc0.onnx
           echo 'c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d  _site/models/yolox-nano-0.1.1rc0.onnx' | sha256sum -c -

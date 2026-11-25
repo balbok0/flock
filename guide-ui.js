@@ -1,0 +1,28 @@
+'use strict';
+function showGuideManager(){
+ const d=reviewDialog('Offline bird guides'),saved=el('div'),country=el('select'),sub=el('select'),preview=el('div'),message=el('p',undefined,'guideStatus'),progress=el('progress'),estimate=el('small'),actions=el('div',undefined,'guideActions');
+ let prepared=null,controller=null,planning=false;
+ const selected=Regions.get(state.birdRegion)||Regions.inferred(state.assets);
+ country.setAttribute('aria-label','Guide country');sub.setAttribute('aria-label','Guide state or province');
+ country.add(new Option('Choose country…',''));country.add(new Option('Worldwide thumbnails','world'));for(const r of Regions.countries())country.add(new Option(r.name,r.id));country.value=selected?.country||'';
+ function subdivisions(){sub.replaceChildren();const rows=Regions.children(country.value);sub.hidden=!rows.length;if(rows.length){sub.add(new Option('Entire country',country.value));for(const r of rows)sub.add(new Option(r.name,r.id))}}
+ subdivisions();if(selected?.parent)sub.value=selected.id;
+ function invalidate(){prepared=null;preview.replaceChildren();download.disabled=true}
+ country.onchange=()=>{subdivisions();invalidate()};sub.onchange=invalidate;
+ const prepare=btn('Check guide coverage',async()=>{if(planning||Guides.isBusy()||reviewLocked())return;const id=sub.hidden?country.value:sub.value;if(!id)throw Error('Choose a country');planning=true;invalidate();prepare.disabled=true;country.disabled=sub.disabled=true;message.textContent='Preparing species list…';try{prepared=await Guides.plan(id);const s=await Guides.status(prepared);preview.textContent=prepared.name+' · '+s.total+' species · '+prepared.size+' px · '+s.n+' already downloaded';estimate.textContent='Estimated new image data: '+Math.ceil((s.total-s.n)*(prepared.size===160?8:40)/1000)+'–'+Math.ceil((s.total-s.n)*(prepared.size===160?30:100)/1000)+' MB (actual browser storage may be larger).';message.textContent='One curated reference photo per species. Region list is an approximate year-round range-model selection.';download.disabled=s.complete}catch(err){message.textContent=err.message}finally{planning=false;prepare.disabled=false;country.disabled=sub.disabled=false;if(prepared)download.disabled=(await Guides.status(prepared)).complete}});
+ const pause=btn('Pause',()=>controller?.abort());pause.hidden=true;
+ async function runPack(p){if(Guides.isBusy()||planning||reviewLocked())return;controller=new AbortController();prepare.disabled=download.disabled=country.disabled=sub.disabled=true;pause.hidden=false;progress.hidden=false;progress.max=p.rows.length;progress.value=0;message.textContent='Downloading '+p.name+'…';try{const s=await Guides.download(p,controller.signal,x=>{progress.value=x.done;message.textContent=x.done+' / '+x.total+' photos · '+x.failed+' failed'+(x.error?' · '+x.error:'')});message.textContent=s.complete?'Guide ready offline · '+s.n+' photos':(s.paused?'Paused':'Incomplete')+' · '+s.n+' / '+s.total+' saved'+(s.error?' · '+s.error:'')+'. Resume to download missing photos.';progress.value=s.n}catch(err){message.textContent=err.message}finally{controller=null;pause.hidden=true;prepare.disabled=country.disabled=sub.disabled=false;download.disabled=!prepared||(await Guides.status(prepared)).complete;await refresh()}}
+ const download=btn('Download guide',()=>prepared&&runPack(prepared),'primary');download.disabled=true;progress.hidden=true;
+ async function refresh(){saved.replaceChildren(el('h4','Downloaded guides'));const packs=await Guides.list();if(!packs.length)saved.append(el('small','No guides downloaded yet.'));for(const p of packs){const s=await Guides.status(p);if(!d.open)return;const row=el('div',undefined,'guidePackRow');row.append(el('strong',p.name),el('small',s.n+' / '+s.total+' photos · '+(s.complete?'Ready offline':'Incomplete')));if(!s.complete)row.append(btn('Resume',()=>runPack(p)));row.append(btn('Remove guide',async()=>{if(Guides.isBusy())return;if(!confirm('Remove '+p.name+' guide? Photos used by other guides and your sightings are kept.'))return;await Guides.remove(p.id);await refresh();if(prepared)download.disabled=(await Guides.status(prepared)).complete},'danger'));saved.append(row)}}
+ d.append(el('p','Avicommons · Creative Commons reference images for noncommercial use. Download before heading into the field. Your photos and sightings are never sent.'),saved,el('h4','Add a guide'),country,sub,prepare,preview,estimate,message,progress,actions);actions.append(download,pause);
+ d.addEventListener('close',()=>controller?.abort(),{once:true});refresh().catch(e=>message.textContent=e.message);
+}
+async function appendOfflineReference(content,taxon){
+ const hit=await Guides.find(taxon);if(!hit)return false;
+ const fig=el('figure',undefined,'guideReference'),img=el('img'),cap=el('figcaption'),source=el('a','Avicommons');
+ img.alt=taxon.common;img.referrerPolicy='no-referrer';source.href='https://avicommons.org/';source.target='_blank';source.rel='noopener noreferrer';cap.append(el('span','Photo: '+hit.by+' · '+Guides.licenseLabel(hit)+' · '),source);
+ const license=Guides.licenseURL(hit);if(license){const a=el('a',' · License');a.href=license;a.target='_blank';a.rel='noopener noreferrer';cap.append(a)}
+ const original=el('a',' · Source image');original.href=hit.src;original.target='_blank';original.rel='noopener noreferrer';cap.append(original);
+ fig.append(img,cap);content.append(el('small','Downloaded · '+hit.pack+' · available offline'),fig);img.onerror=()=>{if(fig.isConnected){img.hidden=true;fig.append(el('small','Saved image unavailable. Resume the guide download.'))}};img.src=hit.src;return true
+}
+document.getElementById('offlineGuides').onclick=()=>showGuideManager();

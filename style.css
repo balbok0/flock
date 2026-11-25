@@ -35,3 +35,5 @@ input[type=file]{display:block;width:100%;margin:5px 0 15px;padding:10px;backgro
 .reviewFrame img[hidden],#assets audio[hidden]{display:none}
 
 .reviewNav .photoActionsButton{font-size:22px;line-height:1;min-width:44px;min-height:44px;margin-left:auto}.photoRemovalChoice{border-top:1px solid #dce2d6;margin-top:10px;padding-top:8px}.photoRemovalChoice button{min-height:44px}.reviewExtraDialog>button.danger{display:block;width:100%;min-height:44px;margin:8px 0}
+
+.guidePackRow{padding:10px 0;border-bottom:1px solid #dce2d6}.guidePackRow strong,.guidePackRow small{display:block;margin-bottom:4px}.guidePackRow button{margin-right:6px;min-height:40px}.guideActions{display:flex;gap:8px}.guideActions button{flex:1;min-height:44px}.guideStatus{font-size:13px;overflow-wrap:anywhere}.guideReference{margin:8px 0}.guideReference img{display:block;width:100%;max-height:300px;object-fit:contain;background:#edf2e9;border-radius:8px}.guideReference figcaption{font-size:11px;overflow-wrap:anywhere}

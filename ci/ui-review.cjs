@@ -158,6 +158,27 @@ async function media(){
  assert.deepEqual(offline,before);assert.match(await page.locator('.encounterStatus').textContent(),/Rufous-vented Chachalaca/);
  pass('Offline reload with origin server stopped restores exact media and confirmations');
 }
+async function guides(){
+ await group();await manualConfirm('Rufous-vented Chachalaca');
+ await page.locator('#offlineGuides').click();const d=page.locator('dialog[open]');
+ await d.locator('select[aria-label="Guide country"]').selectOption('TT');
+ await d.getByRole('button',{name:'Check guide coverage'}).click();
+ await wait(()=>!ML.isBusy()&&document.querySelector('dialog[open] .guideStatus')?.textContent.includes('One curated'),null,120000);
+ const p=await page.evaluate(async()=>{const p=await Guides.plan('TT');return {count:p.rows.length,rows:p.rows.filter(r=>['Rufous-vented Chachalaca','Blue-gray Tanager'].includes(r.name))}});
+ assert(p.count>50);assert(p.rows.some(r=>r.name==='Rufous-vented Chachalaca'));console.log('TT guide coverage: '+p.count+' species');result.guideCoverage=p.count;
+ // QA download a bounded real subset of the computed region, not an entire
+ // regional pack on every CI push. Production UI downloads the full list.
+ const s=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);
+ assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');await d.getByRole('button',{name:'Close',exact:true}).click();
+ await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
+ await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);
+ assert.match(await d.textContent(),/Photo:.*CC/);await screenshot('guide-online');await d.getByRole('button',{name:'Close',exact:true}).click();
+ await wait(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);
+ const requests=[];page.on('request',r=>{if(r.url().includes('api.inaturalist.org'))requests.push(r.url())});
+ await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
+ await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);assert.deepEqual(requests,[]);await screenshot('guide-offline');pass('Offline comparison renders cached Avicommons image and attribution after reload');
+ await d.getByRole('button',{name:'Close',exact:true}).click();
+}
 async function inference(){
  // Genuine model download and inference: no fixture detections or replacement classifier.
  await page.locator('#installVision').click();
@@ -186,8 +207,8 @@ async function inference(){
  await screenshot('crop');await dialog.getByRole('button',{name:'Close',exact:true}).click();pass('Inspect actual model crop in the UI');
  const ref=card.locator('.reviewSpecies:visible .referenceButton').first();
  if(await ref.count()){await ref.click();await dialog.locator('.ownReference').waitFor();await screenshot('comparison');
-   try{await dialog.locator('.referenceGrid img').first().waitFor({timeout:30000});result.referenceGallery='loaded';pass('Live species-reference gallery loaded')}catch{result.referenceGallery='unavailable';console.log('Reference lookup unavailable: '+(await dialog.textContent()).slice(0,400))}
+   try{await dialog.getByRole('button',{name:'Load additional photos online'}).click();await dialog.locator('.referenceGrid img').first().waitFor({timeout:30000});result.referenceGallery='loaded';pass('Live species-reference gallery loaded')}catch{result.referenceGallery='unavailable';console.log('Reference lookup unavailable: '+(await dialog.textContent()).slice(0,400))}
    await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
 }
-(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media'||mode==='media-chromium')await media();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();
+(async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media'||mode==='media-chromium')await media();else if(mode==='guides')await guides();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();

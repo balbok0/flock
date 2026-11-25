@@ -13,3 +13,5 @@ Hoot is a noncommercial project. The project's own materials are CC BY-NC 4.0. T
 | HEIC.FYI metadata test fixture | https://heic.fyi/ | Upstream test sample; used in CI, not included in production app |
 
 The full research references and contributor acknowledgments are in README.md. Merlin Bird ID and eBird are independent Cornell Lab services; Hoot does not redistribute the Merlin application or its private models. User-imported media are not redistributed by Hoot.
+
+Avicommons (https://avicommons.org/, https://github.com/rawcomposition/avicommons): curated photo index and image files, each subject to its own Creative Commons license and photographer attribution. Hoot displays the individual credit, license and source link. Many are CC BY-NC or CC BY-NC-SA; Hoot is noncommercial. Photos are not relicensed under the Hoot project license.

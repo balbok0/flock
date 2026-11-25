@@ -1,0 +1,65 @@
+name: Browser review QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ci/ui-fixtures.py'
+      - 'ci/ui-review.cjs'
+      - '.github/workflows/browser-review.yml'
+      - '*.js'
+      - '*.html'
+      - 'style.css'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [review, inference]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Assemble test site from committed assets
+        run: |
+          mkdir -p _site
+          cp -a prebuilt/models/site/. prebuilt/regions/site/. _site/
+          cp index.html style.css review-tools.js review-extras.js app.js ml.js merlin.js metadata.js geo.js vision.js regions.js taxonomy.js ui.js sw.js manifest.webmanifest icon.svg recover.html version.json LICENSE.txt THIRD_PARTY_NOTICES.md _site/
+          cp prebuilt/taxonomy/taxonomy.json _site/
+          mkdir -p _site/models
+          curl --fail --location --retry 3 --silent --show-error https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx -o _site/models/yolox-nano-0.1.1rc0.onnx
+          echo 'c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d  _site/models/yolox-nano-0.1.1rc0.onnx' | sha256sum -c -
+      - name: Download attributed real bird photos
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==11.3.0
+          python ci/ui-fixtures.py
+      - name: Install mobile browser test runner
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run browser review scenario
+        env:
+          MODE: ${{ matrix.mode }}
+        run: |
+          python -m http.server 8765 --directory _site > /tmp/hoot-qa-http.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" || true' EXIT
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/version.json && break; sleep 1; done
+          node ci/ui-review.cjs "$MODE"
+      - name: Keep screenshots, source attribution and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-${{ matrix.mode }}
+          path: |
+            .qa-results/
+            .qa-photos/attribution.json
+          include-hidden-files: true
+          if-no-files-found: warn

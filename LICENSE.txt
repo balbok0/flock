@@ -1,0 +1,14 @@
+# Hoot — Creative Commons Attribution-NonCommercial 4.0 International
+
+SPDX-License-Identifier: CC-BY-NC-4.0
+
+The original Hoot project code, documentation and artwork in this repository are licensed under the Creative Commons Attribution-NonCommercial 4.0 International license (CC BY-NC 4.0).
+
+License summary: https://creativecommons.org/licenses/by-nc/4.0/
+Full legal text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+You may share and adapt the licensed material for noncommercial purposes, subject to attribution, indication of changes, and the other terms of the license.
+
+Suggested attribution: Hoot contributors, https://github.com/balbok0/flock, CC BY-NC 4.0.
+
+Third-party models, libraries, data and other materials retain their own licenses and terms; this notice does not relicense them. User-imported recordings, photographs and personal observations are not covered by this project license. See THIRD_PARTY_NOTICES.md and the upstream model releases for details.

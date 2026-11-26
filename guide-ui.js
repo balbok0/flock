@@ -42,7 +42,7 @@ function showGuideManager(){
   const count=s.complete?s.total+' photos · Ready offline':s.n+' / '+s.total+' photos';
   text.append(el('strong',p.name),el('small',count,'guideCount'));head.append(text);
   if(!s.complete&&installed){const bar=el('progress');bar.max=s.total;bar.value=s.n;bar.setAttribute('aria-label','Downloaded photos for '+p.name);text.append(bar)}
-  if(!s.complete||!installed){const button=btn(installed?'Resume':'Download guide',()=>startGuideDownload(p,d),'primary');actions.append(button)}
+  if(installed&&Guides.needsRefresh(p)&&p.id!=='extras'){const update=btn('Update guide',async()=>{if(planning||refreshing||reviewLocked())return;planning=true;update.disabled=true;try{const next=await Guides.refreshPack(p);planning=false;if(d.open)await startGuideDownload(next,d)}catch(err){UI.fail(err)}finally{planning=false;update.disabled=false}},'primary');actions.append(update)}else if(!s.complete||!installed){const button=btn(installed?'Resume':'Download guide',()=>startGuideDownload(p,d),'primary');actions.append(button)}
   if(installed){const remove=btn('Remove',async()=>{if(Guides.isBusy()||planning||refreshing)return;if(!confirm('Remove '+p.name+' guide? Photos used by other guides and your sightings are kept.'))return;await Guides.remove(p.id);changed=true;await refresh()},'guideRemove');remove.setAttribute('aria-label','Remove '+p.name+' guide');actions.append(remove)}
   else if(!s.complete){const n=s.total-s.n,lo=Math.ceil(n*(p.size===160?8:40)/1000),hi=Math.ceil(n*(p.size===160?30:100)/1000);text.append(el('small','~'+lo+'–'+hi+' MB to download','guideEstimate'))}
   head.append(actions);row.append(head);return row
@@ -57,7 +57,7 @@ function showGuideManager(){
    invalidate();
   }finally{refreshing=false;prepare.disabled=planning||!chosen()}
  }
- const help=el('details',undefined,'guideHelp'),source=el('a','Avicommons');source.href='https://avicommons.org/';source.target='_blank';source.rel='noopener noreferrer';const info=el('p');info.append(source,document.createTextNode(' provides one licensed reference photo per available species. Regions use approximate year-round model coverage. Downloads stay on this device; your sightings are not shared.'));
+ const help=el('details',undefined,'guideHelp'),source=el('a','Avicommons');source.href='https://avicommons.org/';source.target='_blank';source.rel='noopener noreferrer';const info=el('p');info.append(source,document.createTextNode(' provides one licensed reference photo per available species. Regions use approximate year-round model coverage with documented occurrence additions; you can download an extra species from its comparison view. Downloads stay on this device; your sightings are not shared.'));
  help.append(el('summary','About these guides'),info);
  add.append(el('summary','Add a region'),country,sub,prepare,preview,message);d.append(saved,add,help);
  // A finished download or coverage notice is already represented in the list.

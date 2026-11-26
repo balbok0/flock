@@ -2,16 +2,16 @@
 // Reference guides have their own durable caches, independent of the app shell,
 // model assets and sightings. Only explicit downloads access the image CDN.
 const Guides=(()=>{
-const IMAGES='hoot-avicommons-images-v1',PACKS='hoot-avicommons-packs-v1',VERSION='2025',REGIONAL_SIZE=480,WORLD_SIZE=160,CONCURRENCY=4,COOLDOWN_KEY='hoot-avicommons-retry-after';
+const IMAGES='hoot-avicommons-images-v1',PACKS='hoot-avicommons-packs-v1',VERSION='2025',REVISION=2,REGIONAL_SIZE=480,WORLD_SIZE=160,CONCURRENCY=4,COOLDOWN_KEY='hoot-avicommons-retry-after';
 let catalog=null,busy=false,lookupIndex=null;
 const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
 function normalize(row){
  const code=String(row.code||''),key=String(row.key||''),by=String(row.by||'').trim(),sciName=String(row.sciName||'').trim(),name=String(row.name||'').trim(),license=norm(row.license).replace(/\s+/g,'-');
- if(!/^[a-z0-9]+$/.test(code)||!/^\d+$/.test(key)||!by||!name||!sciName||!/^cc(?:0|-(?:by(?:-nc)?(?:-sa)?))(?:-\d\.\d)?$/.test(license))return null;
+ if(!/^[a-z0-9]+$/.test(code)||!/^[A-Za-z0-9_-]+$/.test(key)||!by||!name||!sciName||!/^cc(?:0|-(?:by(?:-nc)?(?:-sa)?))(?:-\d\.\d)?$/.test(license))return null;
  return {code,key,by,sciName,name,license};
 }
 function matches(row,taxon){return !!taxon&&taxon.category==='species'&&row.code===taxon.code&&norm(row.sciName)===norm(taxon.scientific)}
-function select(rows,resolve,prior=null,occurrence=null){const out=[];for(const raw of rows){const row=normalize(raw);if(!row||!matches(row,resolve(row.code)))continue;if(prior&&!(occurrence(prior,row.sciName,undefined,row.name)>=.005))continue;out.push(row)}return out.sort((a,b)=>a.name.localeCompare(b.name))}
+function select(rows,resolve,prior=null,occurrence=null,include=new Set()){const out=[];for(const raw of rows){const row=normalize(raw);if(!row||!matches(row,resolve(row.code)))continue;if(prior&&!include.has(row.code)&&!(occurrence(prior,row.sciName,undefined,row.name)>=.005))continue;out.push(row)}return out.sort((a,b)=>a.name.localeCompare(b.name))}
 function url(row,size){if(![160,240,320,480,900].includes(size))throw Error('Invalid guide image size');return 'https://static.avicommons.org/'+row.code+'-'+row.key+'-'+size+'.jpg'}
 function licenseLabel(row){return row.license.replace(/^cc0/,'CC0').replace(/^cc-/,'CC ').toUpperCase()}
 function licenseURL(row){const m=row.license.match(/^(cc0|cc-[a-z-]+?)(?:-(\d\.\d))?$/);if(!m||!m[2])return null;return m[1]==='cc0'?'https://creativecommons.org/publicdomain/zero/'+m[2]+'/':'https://creativecommons.org/licenses/'+m[1].slice(3)+'/'+m[2]+'/'}
@@ -21,10 +21,16 @@ async function list(){const c=await caches.open(PACKS),out=[];for(const k of awa
 async function cachedURLs(c){return new Set((await c.keys()).map(r=>r.url))}
 function pendingRows(p,known){const seen=new Set();return p.rows.filter(row=>{const src=url(row,p.size);if(known.has(src)||seen.has(src))return false;seen.add(src);return true})}
 async function status(p){const known=await cachedURLs(await caches.open(IMAGES)),n=p.rows.filter(row=>known.has(url(row,p.size))).length;return {n,total:p.rows.length,complete:n===p.rows.length&&n>0}}
-async function plan(id){const rows=await load();if(id==='world')return {id,name:'Worldwide thumbnails',size:WORLD_SIZE,version:VERSION,rows:select(rows,Taxonomy.exact)};
+// Trinidad & Tobago national biodiversity checklist: Arenaria interpres occurs on both islands.
+// https://www.biodiversity.gov.tt/index.php/trinidad-a-tobago-biodiversity/fauna-checklist/vertebrates/birds/anseriformes-charadriiformes.html
+const documented={TT:new Set(['rudtur'])};
+async function plan(id){const rows=await load();if(id==='world')return {id,name:'Worldwide thumbnails',size:WORLD_SIZE,version:VERSION,revision:REVISION,rows:select(rows,Taxonomy.exact)};
  const r=Regions.get(id);if(!r)throw Error('Choose a region');const prior=await ML.guidePrior(r);if(!prior)throw Error('Range model unavailable; try again while online');
- const selected=select(rows,Taxonomy.exact,prior,Geo.occurrence);if(!selected.length)throw Error('No guide photos found for this region');return {id,name:Regions.label(r),size:REGIONAL_SIZE,version:VERSION,rows:selected}
+ const selected=select(rows,Taxonomy.exact,prior,Geo.occurrence,documented[r.country]||new Set());if(!selected.length)throw Error('No guide photos found for this region');return {id,name:Regions.label(r),size:REGIONAL_SIZE,version:VERSION,revision:REVISION,rows:selected}
 }
+function needsRefresh(p){return p.revision!==REVISION}
+function mergeRefresh(old,fresh){if(old.id!==fresh.id||old.size!==fresh.size)throw Error('Guide region or size changed');const rows=new Map(old.rows.map(r=>[r.code,r]));for(const r of fresh.rows)if(!rows.has(r.code))rows.set(r.code,r);return {...fresh,rows:[...rows.values()].sort((a,b)=>a.name.localeCompare(b.name))}}
+async function refreshPack(p){if(busy)throw Error('Pause downloads first');const fresh=await plan(p.id);if(busy)throw Error('Another guide operation is running');const next=mergeRefresh(p,fresh);await write(next);return next}
 async function write(p){await (await caches.open(PACKS)).put(packKey(p.id),new Response(JSON.stringify(p),{headers:{'Content-Type':'application/json'}}));lookupIndex=null}
 function decode(src,signal){return new Promise((resolve,reject)=>{const i=new Image();let timer;function finish(err){clearTimeout(timer);signal?.removeEventListener('abort',abort);i.onload=i.onerror=null;if(err){i.removeAttribute('src');reject(err)}else resolve()}function abort(){finish(Error('Download paused'))}if(signal?.aborted){abort();return}signal?.addEventListener('abort',abort,{once:true});i.onload=()=>i.naturalWidth>0?finish():finish(Error('Empty guide image'));i.onerror=()=>finish(Error('Guide image cannot be decoded'));timer=setTimeout(()=>finish(Error('Guide image timed out')),20000);i.src=src})}
 function retryDelay(value,now=Date.now()){if(value!=null&&String(value).trim()){const n=Number(value);if(Number.isFinite(n)&&n>=0)return n*1000;const d=Date.parse(value);if(Number.isFinite(d))return Math.max(0,d-now)}return 60000}
@@ -81,8 +87,9 @@ async function download(p,signal,onProgress=()=>{}){
  }finally{busy=false}
 }
 async function remove(id){if(busy)throw Error('Pause downloads first');busy=true;try{const old=await list(),p=old.find(x=>x.id===id);if(!p)return;const remaining=new Set(old.filter(x=>x.id!==id).flatMap(x=>x.rows.map(r=>url(r,x.size))));await (await caches.open(PACKS)).delete(packKey(id));lookupIndex=null;const c=await caches.open(IMAGES);for(const row of p.rows){const src=url(row,p.size);if(!remaining.has(src))await c.delete(src)}}finally{busy=false}}
+async function singlePlan(taxon){const rows=select(await load(),Taxonomy.exact),hit=rows.find(r=>matches(r,taxon));if(!hit)return null;const previous=(await list()).find(p=>p.id==='extras'),map=new Map((previous?.rows||[]).map(r=>[r.code,r]));map.set(hit.code,hit);return {id:'extras',name:'Extra species',size:REGIONAL_SIZE,version:VERSION,revision:REVISION,rows:[...map.values()].sort((a,b)=>a.name.localeCompare(b.name))}}
 async function index(){if(!lookupIndex){const pending=(async()=>{const out=new Map();for(const p of (await list()).sort((a,b)=>b.size-a.size))for(const row of p.rows){if(!out.has(row.code))out.set(row.code,[]);out.get(row.code).push({...row,src:url(row,p.size),size:p.size,pack:p.name})}return out})();lookupIndex=pending;pending.catch(()=>{if(lookupIndex===pending)lookupIndex=null})}return lookupIndex}
 async function find(taxon){if(!taxon)return null;const c=await caches.open(IMAGES),rows=(await index()).get(taxon.code)||[];for(const row of rows)if(matches(row,taxon)&&await c.match(row.src))return row;return null}
-return {normalize,matches,select,url,licenseLabel,licenseURL,load,list,status,plan,download,remove,find,pool,pendingRows,retryDelay,checkResponse,CONCURRENCY,isBusy:()=>busy,IMAGES,PACKS};
+return {normalize,matches,select,url,licenseLabel,licenseURL,load,list,status,plan,needsRefresh,mergeRefresh,refreshPack,singlePlan,download,remove,find,pool,pendingRows,retryDelay,checkResponse,CONCURRENCY,isBusy:()=>busy,IMAGES,PACKS};
 })();
 if(typeof module!=='undefined')module.exports=Guides;

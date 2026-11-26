@@ -24,3 +24,14 @@ const second={...row,key:'124'};assert.deepEqual(G.pendingRows({size:480,rows:[r
  let quota=0;const full=await G.pool(items,async()=>{quota++;const e=Error('full');e.name='QuotaExceededError';throw e});assert.equal(full.reason,'storage');assert(quota<=4);
  console.log('Guide pool: concurrency, resume dedup, pause, rate limit, quota, failure budget passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+const turnstone={code:'rudtur',name:'Ruddy Turnstone',sciName:'Arenaria interpres',license:'CC BY-SA 4.0',key:'IJwX3kC3jF7r8lL0',by:'Hans Hillewaert'};
+const t={code:'rudtur',scientific:'Arenaria interpres',category:'species'};
+assert.equal(G.normalize(turnstone).key,turnstone.key);
+assert.equal(G.url(G.normalize(turnstone),480),'https://static.avicommons.org/rudtur-IJwX3kC3jF7r8lL0-480.jpg');
+assert.equal(G.select([turnstone],()=>t,{},()=>0,new Set(['rudtur'])).length,1);
+assert.equal(G.select([turnstone],()=>t,{},()=>0).length,0);
+assert(G.needsRefresh({version:'2025'}));assert(!G.needsRefresh({revision:2}));
+const updated=G.mergeRefresh({id:'TT',size:480,rows:[row]},{id:'TT',size:480,revision:2,rows:[turnstone,{...row,key:'new'}]});
+assert.equal(updated.rows.length,2);assert.equal(updated.rows.find(r=>r.code===row.code).key,row.key);
+console.log('Alphanumeric Avicommons IDs, documented range additions and non-destructive guide refresh passed');

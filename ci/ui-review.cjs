@@ -164,11 +164,11 @@ async function guides(){
  await d.locator('select[aria-label="Guide country"]').selectOption('TT');
  await d.getByRole('button',{name:'Check guide coverage'}).click();
  await wait(()=>!ML.isBusy()&&document.querySelector('dialog[open] .guidePreview .guideCount'),null,120000);
- const p=await page.evaluate(async()=>{const p=await Guides.plan('TT');return {count:p.rows.length,rows:p.rows.filter(r=>['Rufous-vented Chachalaca','Blue-gray Tanager'].includes(r.name))}});
- assert(p.count>50);assert(p.rows.some(r=>r.name==='Rufous-vented Chachalaca'));console.log('TT guide coverage: '+p.count+' species');result.guideCoverage=p.count;
+ const p=await page.evaluate(async()=>{const p=await Guides.plan('TT');return {count:p.rows.length,rows:p.rows.filter(r=>['Rufous-vented Chachalaca','Blue-gray Tanager','Ruddy Turnstone'].includes(r.name))}});
+ assert(p.count>50);assert(p.rows.some(r=>r.name==='Rufous-vented Chachalaca'));assert(p.rows.some(r=>r.code==='rudtur'&&/[A-Za-z]/.test(r.key)));console.log('TT guide coverage: '+p.count+' species');result.guideCoverage=p.count;
  // QA download a bounded real subset of the computed region, not an entire
  // regional pack on every CI push. Production UI downloads the full list.
- const subset={id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows:p.rows};
+ const subset={id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',revision:2,size:480,rows:p.rows};
  // Exercise the real Download button with a bounded, genuinely selected subset.
  await page.evaluate(p=>{Guides.plan=async()=>p},subset);
  await d.getByRole('button',{name:'Check guide coverage'}).click();await wait(n=>document.querySelector('dialog[open] .guidePreview .guideCount')?.textContent===('0 / '+n+' photos')&&document.querySelector('dialog[open] .modalActivityDock'),p.rows.length);
@@ -176,7 +176,7 @@ async function guides(){
  await wait(()=>!document.querySelector('dialog[open]')&&document.querySelector('#activity').textContent.includes('Downloading guide')||document.querySelector('#activity').textContent.includes('Guide ready offline'));
  await wait(()=>!guideDownloadActive&&document.querySelector('#activity').textContent.includes('Guide ready offline'),null,60000);
  const s=await page.evaluate(p=>Guides.status(p),subset);assert.equal(await page.locator('#activityDock').count(),1);assert.match(await page.locator('#progressDetail').textContent(),/photos saved/);assert(!/photos\/s|downloading\s*\d/.test(await page.locator('#progressDetail').textContent()));pass('Guide download uses shared bottom activity dock and no worker count');
- assert(s.complete,JSON.stringify(s));pass('Avicommons real image download and cache decoding');const resumed=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',size:480,rows},new AbortController().signal),p.rows);assert(resumed.complete);assert.equal(resumed.done,p.rows.length);assert.equal(resumed.failed,0);pass('Resume reuses all downloaded reference images');
+ assert(s.complete,JSON.stringify(s));const turn=await page.evaluate(()=>Guides.find(Taxonomy.exact('Ruddy Turnstone')));assert(turn&&turn.code==='rudtur');pass('Real Ruddy Turnstone alphanumeric reference downloads and resolves');pass('Avicommons real image download and cache decoding');const resumed=await page.evaluate(async rows=>Guides.download({id:'TT',name:'Trinidad and Tobago QA subset',version:'2025',revision:2,size:480,rows},new AbortController().signal),p.rows);assert(resumed.complete);assert.equal(resumed.done,p.rows.length);assert.equal(resumed.failed,0);pass('Resume reuses all downloaded reference images');
  // Reopen with a partial guide: one row, one count, no duplicate coverage notice.
  await page.evaluate(async row=>{await (await caches.open(Guides.IMAGES)).delete(Guides.url(row,480))},p.rows[0]);
  await page.locator('#offlineGuides').click();await d.locator('.guideList .guidePackRow').first().waitFor();
@@ -187,7 +187,7 @@ async function guides(){
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);
  assert.match(await d.textContent(),/Photo:.*CC/);await screenshot('guide-online');await d.getByRole('button',{name:'Close',exact:true}).click();
  await wait(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.reload({waitUntil:'load'});await wait(()=>libraryReady);
- await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);const requests=[];page.on('request',r=>{if(r.url().includes('api.inaturalist.org'))requests.push(r.url())});pass('Inline reference thumbnail survives offline reload');
+ await wait(()=>document.querySelector('.reviewSpecies .referenceThumb img')?.naturalWidth>0);const turnstone=await page.evaluate(async()=>{const hit=await Guides.find(Taxonomy.exact('Ruddy Turnstone'));if(!hit)return false;const img=new Image();img.src=hit.src;await img.decode();return img.naturalWidth>0});assert(turnstone);pass('Ruddy Turnstone alphanumeric photo decodes offline');const requests=[];page.on('request',r=>{if(r.url().includes('api.inaturalist.org'))requests.push(r.url())});pass('Inline reference thumbnail survives offline reload');
  await page.locator('.encounterReview .reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'}).getByRole('button',{name:'Compare photos'}).click();
  await wait(()=>document.querySelector('dialog[open] .guideReference img')?.naturalWidth>0);assert.deepEqual(requests,[]);await screenshot('guide-offline');pass('Offline comparison renders cached Avicommons image and attribution after reload');
  await d.getByRole('button',{name:'Close',exact:true}).click();

@@ -18,6 +18,7 @@ jobs:
         run: |
           python -m pip install numpy pillow onnxruntime
           python ci/ui-fixtures.py
+          python ci/detector-fixtures.py
           mkdir -p .detector-models
           for model in nano tiny s; do
             curl -fLsS --retry 3 "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_${model}.onnx" -o ".detector-models/yolox_${model}.onnx"
@@ -28,4 +29,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: detector-results
-          path: detector-results.json
+          path: |
+            detector-results.json
+            motmot-attribution.json
+            .qa-photos/attribution.json

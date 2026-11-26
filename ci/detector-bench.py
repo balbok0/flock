@@ -87,6 +87,7 @@ def main():
             with Image.open(photo) as img: image=ImageOps.exif_transpose(img).convert("RGB")
             result[photo.name]=evaluate(session,image,size)
             print(name,photo.name, " | ".join(f"{k}: {v['count']} ({','.join(format(b['score'],'.3f') for b in v['boxes'])})" for k,v in result[photo.name].items()),flush=True)
+            print("DETAIL",name,photo.name,json.dumps(result[photo.name]["current"]),flush=True)
         output[name]={"model_bytes":path.stat().st_size,"input_size":size,"photos":result}
     a.output.write_text(json.dumps(output,indent=2))
 if __name__=="__main__": main()

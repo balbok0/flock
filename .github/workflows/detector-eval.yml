@@ -1,0 +1,31 @@
+name: Detector evaluation
+on:
+  push:
+    branches: [detector-eval]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Get official model weights and public fixtures
+        run: |
+          python -m pip install numpy pillow onnxruntime
+          python ci/ui-fixtures.py
+          mkdir -p .detector-models
+          for model in nano tiny s; do
+            curl -fLsS --retry 3 "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_${model}.onnx" -o ".detector-models/yolox_${model}.onnx"
+          done
+          echo 'c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d  .detector-models/yolox_nano.onnx' | sha256sum -c -
+      - name: Compare model and postprocessing policies
+        run: python ci/detector-bench.py --models .detector-models .qa-photos/*.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: detector-results
+          path: detector-results.json

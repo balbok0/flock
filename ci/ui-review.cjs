@@ -205,9 +205,10 @@ async function inference(){
  const findings=await page.evaluate(()=>state.assets.filter(p=>p.kind==='photo').map(p=>({name:p.name,detectorVersion:p.detectorVersion,boxes:(p.autoBirds||[]).map(b=>({box:b.box,confidence:b.confidence,visual:(b.visual||[]).map(v=>({species:Taxonomy.model(v.species,v.scientific,v.code)?.common||v.species,similarity:v.similarity,rawAlternative:!!v.rawAlternative}))}))})));
  result.inference=findings.map(p=>{const expected=cases.find(c=>c.name===p.name).species;return {...p,expected,expectedRanks:p.boxes.map(b=>{const i=b.visual.findIndex(v=>v.species===expected);return i<0?null:i+1})}});
  console.log(JSON.stringify(result.inference,null,2));
- assert(findings.every(p=>p.detectorVersion),'Detector did not run on every photo');
+ assert(findings.every(p=>p.detectorVersion==='yolox-tiny-0.1.1rc0-v1'),'Tiny detector did not run on every photo');
+ assert(findings.every(p=>p.boxes.length===1),'Expected one bird per single-bird fixture: '+JSON.stringify(findings.map(p=>[p.name,p.boxes.length])));
  assert(findings.some(p=>p.boxes.length>0),'No birds detected in any fixture');
- pass('Real YOLOX and WingCLIP inference completed on all three photos');await page.locator('.reviewSpecies .evidenceScores').first().waitFor();const evidence=await page.locator('.reviewSpecies .evidenceScores').allTextContents();assert(evidence.some(s=>/Visual -?\d+\.\d{3}/.test(s)&&/Range \d+%|Range <1%/.test(s)));pass('Visual similarity and independent range suitability shown on inferred species rows');
+ pass('Real YOLOX-Tiny and WingCLIP inference completed; one box per single-bird fixture');await page.locator('.reviewSpecies .evidenceScores').first().waitFor();const evidence=await page.locator('.reviewSpecies .evidenceScores').allTextContents();assert(evidence.some(s=>/Visual -?\d+\.\d{3}/.test(s)&&/Range \d+%|Range <1%/.test(s)));pass('Visual similarity and independent range suitability shown on inferred species rows');
  await page.locator('.queueIndex summary').click();await page.locator('.queueIndexItem').first().waitFor();const named=await page.locator('.queueIndexItem').allTextContents();assert(named.some(s=>/Suggested · not confirmed|Possible · rare/.test(s)));await page.locator('.queueIndex summary').click();pass('Encounter index displays model species before confirmation');
  await screenshot('predictions');
  const e=await page.evaluate(()=>state.encounters.find(e=>e.ids.some(id=>state.assets.find(a=>a.id===id)?.autoBirds?.length))?.id);
@@ -223,5 +224,15 @@ async function inference(){
    try{await dialog.getByRole('button',{name:'Load additional photos online'}).click();await dialog.locator('.referenceGrid img').first().waitFor({timeout:30000});result.referenceGallery='loaded';pass('Live species-reference gallery loaded')}catch{result.referenceGallery='unavailable';console.log('Reference lookup unavailable: '+(await dialog.textContent()).slice(0,400))}
    await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
+ // More public regression cases through the production file import and analysis path.
+ const motmots=JSON.parse(fs.readFileSync('motmot-attribution.json','utf8'));
+ await page.locator('#photos').setInputFiles(motmots.map(f=>path.join(source,f.name)));
+ await wait(()=>state.assets.length===5&&!importingLibrary);
+ await page.evaluate(()=>groupPhotos());
+ for(const fixture of motmots){
+  const detected=await page.evaluate(async name=>{const p=state.assets.find(a=>a.name===name),e=state.encounters.find(e=>e.ids.includes(p.id));const ok=await ML.analyzePhotos(e);return {ok,version:p.detectorVersion,count:p.autoBirds?.length,boxes:p.autoBirds?.map(b=>({box:b.box,confidence:b.confidence}))}},fixture.name);
+  console.log('Tiny regression',fixture.name,JSON.stringify(detected));assert(detected.ok);assert.equal(detected.version,'yolox-tiny-0.1.1rc0-v1');assert.equal(detected.count,fixture.expected_birds);pass('Tiny '+fixture.name+' returns '+fixture.expected_birds+' bird boxes');
+ }
+
 }
 (async()=>{try{await start();if(mode==='review')await review();else if(mode==='inference')await inference();else if(mode==='media'||mode==='media-chromium')await media();else if(mode==='guides')await guides();else throw Error('Unknown mode '+mode);assert.deepEqual(errors,[]);assert.deepEqual(alerts,[]);result.status='passed'}catch(e){result.status='failed';result.error=e.stack||e.message;console.error(result.error);if(page){try{await screenshot('failure');result.activity=await page.locator('#activity').textContent();result.log=await page.locator('#log').textContent();console.error(result.activity,result.log)}catch{}}process.exitCode=1}finally{result.pageErrors=errors;result.alerts=alerts;fs.writeFileSync(path.join(output,mode+'.json'),JSON.stringify(result,null,2));if(browser)await browser.close()}})();

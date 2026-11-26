@@ -6,6 +6,7 @@ Hoot is a noncommercial project. The project's own materials are CC BY-NC 4.0. T
 | --- | --- | --- |
 | BirdNET+ V3.0.1 acoustic model and Geomodel V3.0.5 | https://doi.org/10.5281/zenodo.24362980 | Apache 2.0 model license and accompanying acceptable-use guidance; see models/MODEL_LICENSE.txt and models/ACCEPTABLE_USE.txt in deployed app |
 | WingCLIP 0.3 model weights | https://huggingface.co/johnlian/WingCLIP-0.3 | CC BY-NC 4.0; upstream model card and per-image attribution in https://github.com/jlian/wingdex |
+| YOLOX-Tiny and legacy cached YOLOX-Nano (0.1.1rc0) | https://github.com/Megvii-BaseDetection/YOLOX | Apache 2.0; official COCO pretrained ONNX weights |
 | ONNX Runtime Web 1.22.0 | https://github.com/microsoft/onnxruntime | MIT; https://github.com/microsoft/onnxruntime/blob/v1.22.0/LICENSE |
 | ExifReader 4.52.0 | https://github.com/mattiasw/ExifReader | Upstream license included as vendor/ExifReader-LICENSE in deployed app |
 | Natural Earth v5.1.2 | https://www.naturalearthdata.com/about/terms-of-use/ | Public-domain geographic data |

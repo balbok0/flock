@@ -10,12 +10,18 @@ function box(b){if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return null;con
 function boxCrop(w,h,b,padding=.25){const r=box(b);if(!r)throw Error('Invalid bird box');const side=Math.max(r.w*w,r.h*h)*(1+padding);return {x:(r.x+r.w/2)*w-side/2,y:(r.y+r.h/2)*h-side/2,side}}
 function legacyBox(w,h,f){const c=crop(w,h,f);return box({x:c.x/w,y:c.y/h,w:c.side/w,h:c.side/h})}
 function active(p){return p.manualBirds??p.autoBirds??[]}
-function iou(a,b){const area=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));return area/(a.w*a.h+b.w*b.h-area||1)}
-function suppress(hits,threshold=.45){const out=[];for(const h of [...hits].sort((a,b)=>b.confidence-a.confidence))if(!out.some(o=>iou(o.box,h.box)>threshold))out.push(h);return out}
-// Official YOLOX Nano release: 416 BGR, [1,3549,85], raw grid offsets.
-const DETECTOR_SIZE=416,DETECTOR_VERSION='yolox-nano-0.1.1rc0-v1';
+function intersection(a,b){return Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y))}
+function iou(a,b){const area=intersection(a,b);return area/(a.w*a.h+b.w*b.h-area||1)}
+// IoU alone misses a head/body box nested inside the whole bird. Compare
+// the intersection to the smaller box too; keep the strongest detection.
+function containment(a,b){return intersection(a,b)/(Math.min(a.w*a.h,b.w*b.h)||1)}
+function suppress(hits,threshold=.45,contained=.85){const out=[];for(const h of [...hits].sort((a,b)=>b.confidence-a.confidence))if(!out.some(o=>iou(o.box,h.box)>threshold||containment(o.box,h.box)>=contained))out.push(h);return out}
+// Official YOLOX Tiny release: 416 BGR, [1,3549,85], raw grid offsets.
+const DETECTOR_SIZE=416,DETECTOR_VERSION='yolox-tiny-0.1.1rc0-v1';
 function decode(data,width,height,tile={x:0,y:0,w:width,h:height},threshold=.20){if(data.length!==3549*85)throw Error('YOLOX output shape mismatch');const scale=Math.min(416/tile.w,416/tile.h),hits=[];let row=0;for(const stride of [8,16,32])for(let gy=0;gy<416/stride;gy++)for(let gx=0;gx<416/stride;gx++,row++){const i=row*85,confidence=data[i+4]*data[i+5+14];if(!Number.isFinite(confidence)||confidence<threshold||confidence>1)continue;const cx=(data[i]+gx)*stride/scale,cy=(data[i+1]+gy)*stride/scale,bw=Math.exp(data[i+2])*stride/scale,bh=Math.exp(data[i+3])*stride/scale;if(![cx,cy,bw,bh].every(Number.isFinite))continue;const x1=Math.max(0,cx-bw/2),y1=Math.max(0,cy-bh/2),x2=Math.min(tile.w,cx+bw/2),y2=Math.min(tile.h,cy+bh/2);if(x2<=x1||y2<=y1)continue;const b=box({x:(tile.x+x1)/width,y:(tile.y+y1)/height,w:(x2-x1)/width,h:(y2-y1)/height});if(b)hits.push({box:b,confidence})}return suppress(hits)}
 function tiles(w,h){const tw=Math.ceil(w*.6),th=Math.ceil(h*.6);return [{x:0,y:0,w:tw,h:th},{x:w-tw,y:0,w:tw,h:th},{x:0,y:h-th,w:tw,h:th},{x:w-tw,y:h-th,w:tw,h:th}]}
+// Preserve legacy box confirmations before replacing automatic detections.
+function replaceAutomatic(e,photos,p,hits,version,newId){if(p.manualBirds!=null)return false;if(!Array.isArray(e.review)&&p.autoBirds?.some(b=>b.confirmed&&b.species))e.review=reviewDraft(e,photos);p.autoBirds=hits.map(h=>({...h,id:newId()}));p.detectorVersion=version;return true}
 // Count individuals within one frame, never sum a burst across frames.
 function observations(photos,canonical=x=>x){const best=new Map();for(const p of photos){const counts=new Map();for(const b of active(p)){if(!b.confirmed||!b.species)continue;const name=canonical(b.species);counts.set(name,(counts.get(name)||0)+1)}for(const [species,count] of counts){const old=best.get(species);if(!old||count>old.count)best.set(species,{species,count,photo:p})}}return [...best.values()]}
 // Encounter review is authoritative once edited; an empty review is intentional.
@@ -45,6 +51,6 @@ function encounterLabel(e,photos,canonical=x=>x,resolve=v=>v.species){
  if(e.species)return {title:canonical(e.species),kind:'suggested',photoId:photos[0]?.id};
  return {title:'Unidentified encounter',kind:'unknown',photoId:photos[0]?.id};
 }
-return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,suppress,decode,tiles,observations,reviewed,reviewDraft,suggestions,scoreEvidence,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,encounterLabel,DETECTOR_SIZE,DETECTOR_VERSION};
+return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,containment,suppress,decode,tiles,replaceAutomatic,observations,reviewed,reviewDraft,suggestions,scoreEvidence,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,encounterLabel,DETECTOR_SIZE,DETECTOR_VERSION};
 })();
 if(typeof module!=='undefined')module.exports=VisionViews;

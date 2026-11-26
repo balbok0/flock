@@ -40,3 +40,17 @@ console.log('Review queue: filters, progress, navigation, deferred and empty rev
  const rows=V.suggestions({},[p,q]),bird=rows.find(r=>r.species==='Bird');assert.equal(bird.similarity,.73);assert.equal(bird.occurrence,.86);assert.equal(bird.photoId,'first');assert.equal(bird.nearAudio,true);assert.deepEqual(V.scoreEvidence(bird),{similarity:'0.730',range:'86%',tier:'local'});assert.equal(V.scoreEvidence(rows.find(r=>r.species==='Rare')).range,'<1%');assert.equal(V.scoreEvidence(rows.find(r=>r.species==='Unknown')).tier,'unknown');assert.equal(V.scoreEvidence({occurrence:0}).range,'0%');assert.equal(V.scoreEvidence({}).range,null);
  console.log('Original visual/range evidence survives aggregation without mixing independent maxima');
 }
+
+{
+ const large={x:.2,y:.15,w:.2,h:.5},nested={x:.23,y:.2,w:.08,h:.12},adjacent={x:.37,y:.17,w:.20,h:.5};
+ assert(V.iou(large,nested)<.45);assert(V.containment(large,nested)>.99);
+ const hits=[{box:nested,confidence:.55},{box:large,confidence:.88},{box:adjacent,confidence:.75}];
+ assert.deepEqual(V.suppress(hits),[hits[1],hits[2]]);assert.equal(V.suppress(hits,.45,Infinity).length,3);
+ const photo={id:'p',autoBirds:[{box:large,species:'Motmot',confirmed:true}],detectorVersion:'yolox-nano-0.1.1rc0-v1'},manual={id:'m',manualBirds:[{id:'kept',box:nested}]},e={};
+ assert(V.replaceAutomatic(e,[photo,manual],photo,[hits[1]],V.DETECTOR_VERSION,()=> 'new'));
+ assert.deepEqual(e.review,[{species:'Motmot',count:1,photoId:'p'}]);assert.equal(photo.detectorVersion,V.DETECTOR_VERSION);assert.equal(photo.autoBirds[0].id,'new');
+ assert.equal(V.replaceAutomatic(e,[photo,manual],manual,[hits[1]],V.DETECTOR_VERSION,()=> 'wrong'),false);assert.equal(manual.manualBirds[0].id,'kept');
+ const reviewed={review:[{species:'Motmot',count:2,photoId:'p'}]};const original=reviewed.review;
+ V.replaceAutomatic(reviewed,[photo],photo,[],V.DETECTOR_VERSION,()=> 'unused');assert.equal(reviewed.review,original);
+ console.log('Nested duplicate suppression, adjacent birds, detector migration and confirmation preservation passed');
+}

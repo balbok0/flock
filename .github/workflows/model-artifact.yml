@@ -1,0 +1,21 @@
+name: Detector model artifact
+on:
+  push:
+    branches: [detector-eval]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Retrieve public model
+        run: |
+          curl -fLsS --retry 2 https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx -o yolox_tiny.onnx
+          echo '427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7  yolox_tiny.onnx' | sha256sum -c -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiny-public-weights
+          path: yolox_tiny.onnx
+          retention-days: 1

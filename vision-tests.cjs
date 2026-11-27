@@ -54,3 +54,24 @@ console.log('Review queue: filters, progress, navigation, deferred and empty rev
  V.replaceAutomatic(reviewed,[photo],photo,[],V.DETECTOR_VERSION,()=> 'unused');assert.equal(reviewed.review,original);
  console.log('Nested duplicate suppression, adjacent birds, detector migration and confirmation preservation passed');
 }
+
+{
+ const hit=(w,h,confidence=.3)=>({box:{x:.1,y:.1,w:w/1152,h:h/1536},confidence});
+ // Geometry from field-reported regression, rounded original pixel sizes.
+ const black=hit(263,99,.727),flock=[hit(47,40,.301),hit(17,20,.23)];
+ assert.deepEqual(V.identificationBoxes([black],1152,1536),{boxes:[black],qualityRejected:false});
+ assert.deepEqual(V.identificationBoxes(flock,1152,1536),{boxes:[],qualityRejected:true});
+ assert.deepEqual(V.identificationBoxes([],1152,1536),{boxes:[],qualityRejected:false});
+ const boundary=[hit(24,48),hit(48,24)];assert.deepEqual(V.identificationBoxes(boundary,1152,1536).boxes,boundary);
+ assert.equal(V.identificationBoxes([hit(23,100),hit(47,47)],1152,1536).boxes.length,0);
+ assert.deepEqual(V.identificationBoxes([black,...flock],1152,1536),{boxes:[black],qualityRejected:false});
+ const p={id:'p',autoBirds:[{...flock[0],species:'Confirmed',confirmed:true}]},e={visual:[{species:'Stale',similarity:.9}]};
+ V.replaceAutomatic(e,[p],p,[],V.DETECTOR_VERSION,()=> 'unused',true);
+ assert.equal(p.qualityRejected,true);assert.equal(V.centeredFallback(p),false);assert.deepEqual(V.suggestions(e,[p]),[]);
+ assert.deepEqual(V.reviewDraft(e,[p]),[{species:'Confirmed',count:1,photoId:'p'}]);
+ p.manualBirds=[{box:flock[0].box}];assert.equal(V.active(p).length,1);assert.equal(V.centeredFallback(p),false);
+ p.manualBirds=[];assert.equal(V.centeredFallback(p),false);p.manualBirds=null;assert.equal(V.centeredFallback(p),false);
+ const q={id:'q'};assert.equal(V.centeredFallback(q),true);assert.equal(V.suggestions(e,[p,q])[0].photoId,'q');
+ V.replaceAutomatic(e,[p],p,[],V.DETECTOR_VERSION,()=> 'unused',false);assert.equal(V.centeredFallback(p),true);
+ console.log('Original-pixel quality gate, boundary dimensions, mixed detections, silent rejection, fallback and confirmation preservation passed');
+}

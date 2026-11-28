@@ -75,3 +75,17 @@ console.log('Review queue: filters, progress, navigation, deferred and empty rev
  V.replaceAutomatic(e,[p],p,[],V.DETECTOR_VERSION,()=> 'unused',false);assert.equal(V.centeredFallback(p),true);
  console.log('Original-pixel quality gate, boundary dimensions, mixed detections, silent rejection, fallback and confirmation preservation passed');
 }
+
+{
+ assert.deepEqual(V.centerTile(1152,1536),{x:346,y:461,w:460,h:614});
+ const caracara={x:522/1152,y:865/1536,w:84/1152,h:114/1536};
+ const far={box:caracara,confidence:.787};
+ assert.equal(V.identificationBoxes([far],1152,1536).boxes.length,1);
+ assert.deepEqual(V.identificationPaddings(1152,1536,caracara),[.25,1.5,2]);
+ assert.deepEqual(V.identificationPaddings(1152,1536,caracara,true),[.25]);
+ assert.deepEqual(V.identificationPaddings(1152,1536,{x:.1,y:.1,w:.3,h:.3}),[.25]);
+ assert.deepEqual([...V.averageScores([[.3,.6],[.6,.3],[.6,.6]])].map(x=>Math.round(x*10)),[5,5]);
+ assert.throws(()=>V.averageScores([]));assert.throws(()=>V.averageScores([[1],[1,2]]));
+ assert.equal(V.suppress([{box:caracara,confidence:.558},far]).length,1);
+ console.log('Central fallback, scale-adaptive classification, mean similarity and duplicate suppression passed');
+}

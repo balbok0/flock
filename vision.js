@@ -17,9 +17,13 @@ function iou(a,b){const area=intersection(a,b);return area/(a.w*a.h+b.w*b.h-area
 function containment(a,b){return intersection(a,b)/(Math.min(a.w*a.h,b.w*b.h)||1)}
 function suppress(hits,threshold=.45,contained=.85){const out=[];for(const h of [...hits].sort((a,b)=>b.confidence-a.confidence))if(!out.some(o=>iou(o.box,h.box)>threshold||containment(o.box,h.box)>=contained))out.push(h);return out}
 // Official YOLOX Tiny release: 416 BGR, [1,3549,85], raw grid offsets.
-const DETECTOR_SIZE=416,DETECTOR_VERSION='yolox-tiny-0.1.1rc0-v2';
+const DETECTOR_SIZE=416,DETECTOR_VERSION='yolox-tiny-0.1.1rc0-v3';
 function decode(data,width,height,tile={x:0,y:0,w:width,h:height},threshold=.20){if(data.length!==3549*85)throw Error('YOLOX output shape mismatch');const scale=Math.min(416/tile.w,416/tile.h),hits=[];let row=0;for(const stride of [8,16,32])for(let gy=0;gy<416/stride;gy++)for(let gx=0;gx<416/stride;gx++,row++){const i=row*85,confidence=data[i+4]*data[i+5+14];if(!Number.isFinite(confidence)||confidence<threshold||confidence>1)continue;const cx=(data[i]+gx)*stride/scale,cy=(data[i+1]+gy)*stride/scale,bw=Math.exp(data[i+2])*stride/scale,bh=Math.exp(data[i+3])*stride/scale;if(![cx,cy,bw,bh].every(Number.isFinite))continue;const x1=Math.max(0,cx-bw/2),y1=Math.max(0,cy-bh/2),x2=Math.min(tile.w,cx+bw/2),y2=Math.min(tile.h,cy+bh/2);if(x2<=x1||y2<=y1)continue;const b=box({x:(tile.x+x1)/width,y:(tile.y+y1)/height,w:(x2-x1)/width,h:(y2-y1)/height});if(b)hits.push({box:b,confidence})}return suppress(hits)}
 function tiles(w,h){const tw=Math.ceil(w*.6),th=Math.ceil(h*.6);return [{x:0,y:0,w:tw,h:th},{x:w-tw,y:0,w:tw,h:th},{x:0,y:h-th,w:tw,h:th},{x:w-tw,y:h-th,w:tw,h:th}]}
+// A fifth, tighter tile covers the center where corner crops offer limited detail.
+function centerTile(w,h){const tw=Math.max(1,Math.floor(w*.4)),th=Math.max(1,Math.floor(h*.4));return {x:Math.floor((w-tw)/2),y:Math.floor((h-th)/2),w:tw,h:th}}
+function identificationPaddings(w,h,b,manual=false){return !manual&&Math.max(b.w*w,b.h*h)<=160?[.25,1.5,2]:[.25]}
+function averageScores(vectors){if(!vectors.length)throw Error('No identification views');const out=new Float64Array(vectors[0].length);for(const values of vectors){if(values.length!==out.length)throw Error('View score dimension mismatch');for(let i=0;i<out.length;i++)out[i]+=values[i]/vectors.length}return out}
 // Measure the unpadded bird box in original, oriented image pixels. A
 // successful detection that is entirely too small is distinct from no hits.
 function identificationBoxes(hits,width,height){
@@ -58,6 +62,6 @@ function encounterLabel(e,photos,canonical=x=>x,resolve=v=>v.species){
  if(e.species)return {title:canonical(e.species),kind:'suggested',photoId:photos[0]?.id};
  return {title:'Unidentified encounter',kind:'unknown',photoId:photos[0]?.id};
 }
-return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,containment,suppress,decode,tiles,identificationBoxes,centeredFallback,replaceAutomatic,observations,reviewed,reviewDraft,suggestions,scoreEvidence,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,encounterLabel,DETECTOR_SIZE,DETECTOR_VERSION};
+return {focus,crop,views,accumulate,box,boxCrop,legacyBox,active,iou,containment,suppress,decode,tiles,centerTile,identificationPaddings,averageScores,identificationBoxes,centeredFallback,replaceAutomatic,observations,reviewed,reviewDraft,suggestions,scoreEvidence,reviewStatus,reviewQueue,reviewProgress,nextReview,afterReview,encounterLabel,DETECTOR_SIZE,DETECTOR_VERSION};
 })();
 if(typeof module!=='undefined')module.exports=VisionViews;

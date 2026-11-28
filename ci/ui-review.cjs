@@ -213,7 +213,7 @@ async function inference(){
  const findings=await page.evaluate(()=>state.assets.filter(p=>p.kind==='photo').map(p=>({name:p.name,detectorVersion:p.detectorVersion,boxes:(p.autoBirds||[]).map(b=>({box:b.box,confidence:b.confidence,visual:(b.visual||[]).map(v=>({species:Taxonomy.model(v.species,v.scientific,v.code)?.common||v.species,similarity:v.similarity,rawAlternative:!!v.rawAlternative}))}))})));
  result.inference=findings.map(p=>{const expected=cases.find(c=>c.name===p.name).species;return {...p,expected,expectedRanks:p.boxes.map(b=>{const i=b.visual.findIndex(v=>v.species===expected);return i<0?null:i+1})}});
  console.log(JSON.stringify(result.inference,null,2));
- assert(findings.every(p=>p.detectorVersion==='yolox-tiny-0.1.1rc0-v2'),'Tiny detector did not run on every photo');
+ assert(findings.every(p=>p.detectorVersion==='yolox-tiny-0.1.1rc0-v3'),'Tiny detector did not run on every photo');
  assert(findings.every(p=>p.boxes.length===1),'Expected one bird per single-bird fixture: '+JSON.stringify(findings.map(p=>[p.name,p.boxes.length])));
  assert(findings.some(p=>p.boxes.length>0),'No birds detected in any fixture');
  pass('Real YOLOX-Tiny and WingCLIP inference completed; one box per single-bird fixture');await page.locator('.reviewSpecies .evidenceScores').first().waitFor();const evidence=await page.locator('.reviewSpecies .evidenceScores').allTextContents();assert(evidence.some(s=>/Visual -?\d+\.\d{3}/.test(s)&&/Range \d+%|Range <1%/.test(s)));pass('Visual similarity and independent range suitability shown on inferred species rows');
@@ -239,7 +239,7 @@ async function inference(){
  await page.evaluate(()=>groupPhotos());
  for(const fixture of motmots){
   const detected=await page.evaluate(async name=>{const p=state.assets.find(a=>a.name===name),e=state.encounters.find(e=>e.ids.includes(p.id));const ok=await ML.analyzePhotos(e);return {ok,version:p.detectorVersion,count:p.autoBirds?.length,boxes:p.autoBirds?.map(b=>({box:b.box,confidence:b.confidence}))}},fixture.name);
-  console.log('Tiny regression',fixture.name,JSON.stringify(detected));assert(detected.ok);assert.equal(detected.version,'yolox-tiny-0.1.1rc0-v2');assert.equal(detected.count,fixture.expected_birds);pass('Tiny '+fixture.name+' returns '+fixture.expected_birds+' bird boxes');
+  console.log('Tiny regression',fixture.name,JSON.stringify(detected));assert(detected.ok);assert.equal(detected.version,'yolox-tiny-0.1.1rc0-v3');assert.equal(detected.count,fixture.expected_birds);pass('Tiny '+fixture.name+' returns '+fixture.expected_birds+' bird boxes');
  }
 
  // Replay the field-reported small-box geometry through the production gate.

@@ -208,3 +208,7 @@ After existing Tiny detection and duplicate suppression (including the existing 
 ## v0.41 — UI sanding
 
 A small mobile usability pass inspired by Jim Nielsen’s Sanding UI: one-line photo controls at typical iPhone widths, hide unnecessary single-photo navigation and box toggle, keep count/confirmation controls aligned, move manual additions into the main species list, blur search after selection, close the encounter index after jumping, collapse score explanations while preserving the scores, remove duplicate deferred counts and zero-recording labels, remove permanent startup progress, and keep Pause disabled while cancellation settles. Focus indicators and touch targets improved. Browser review scenario repeatedly jumps between encounters and checks toolbar height, single-photo controls, manual confirmation, and late pause progress. No inference/storage changes.
+
+## v0.42 — Second sanding pass
+
+Remove the redundant count beside the Review heading, enlarge photo navigation hit targets, shorten the encounter status gap, and make score help and encounter navigation disclosure hit areas larger. Manual box editor shows whether drawing or redrawing, disables inapplicable add/delete actions, keeps Save/Reset/Cancel reachable, and retains drafts until Save. Audio species entry matches photo review; collapsing recording details pauses playback. Real browser regression exercises drawing, selecting, deleting and canceling a box and manual audio confirmation/undo. No model changes.

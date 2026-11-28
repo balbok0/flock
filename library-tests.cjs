@@ -2,12 +2,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const src=fs.readFileSync('app.js','utf8');
 const start=src.indexOf('function emptyLibrary('),end=src.indexOf('function render()',start);
 assert.ok(start>=0&&end>start);
-const controls=new Map(),node=id=>{if(!controls.has(id))controls.set(id,{disabled:false,value:'old',textContent:'old',dataset:{}});return controls.get(id)};
+const controls=new Map(),node=id=>{if(!controls.has(id))controls.set(id,{disabled:false,value:'old',textContent:'old',dataset:{},listeners:{},addEventListener(type,fn){this.listeners[type]=fn},querySelectorAll(){return []}});return controls.get(id)};
 let consent=false,fail=false,writes=0,rendered=0,errors=0,busy=false,saved;
 const initial={assets:[{kind:'photo'},{kind:'audio'}],encounters:[{confirmed:true}],detections:[{species:'Test'}],birdRegion:'TT',location:{lat:1,lon:2},futurePreference:'keep'};
 const sandbox={$:node,document:{querySelectorAll:()=>[...controls.values()]},state:initial,confirm:()=>consent,ML:{isBusy:()=>busy,resetGeo(){}},UI:{resetLog(){},note(){},report(){},fail(){errors++}},render(){rendered++},persistLibrary:async s=>{if(fail)throw Error('write failed');saved=s;writes++}};
 vm.createContext(sandbox);vm.runInContext(src.slice(start,end)+'\nlibraryReady=true;',sandbox);
 (async()=>{
+let pauses=0;node('assets').querySelectorAll=selector=>{assert.equal(selector,'audio');return [{pause(){pauses++}},{pause(){pauses++}}]};node('mediaReview').open=true;node('mediaReview').listeners.toggle();assert.equal(pauses,0);node('mediaReview').open=false;node('mediaReview').listeners.toggle();assert.equal(pauses,2);console.log('Audio collapse pauses all recording players');
 await sandbox.clearLibrary();assert.equal(writes,0);
 consent=true;busy=true;await sandbox.clearLibrary();assert.equal(writes,0);busy=false;
 fail=true;await sandbox.clearLibrary();assert.equal(errors,1);assert.equal(sandbox.state,initial);assert.equal(writes,0);

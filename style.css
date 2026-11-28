@@ -77,3 +77,5 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 .encounterStatus{height:32px}.photoBrowse button{min-width:44px}.boxEditMode{font-size:13px;font-weight:600;margin:8px 0 0}.boxEditorFooter{position:sticky;bottom:0;background:white;padding:8px 0 0;margin-top:8px;border-top:1px solid #dce2d6;display:flex;flex-wrap:wrap;gap:6px}.boxEditorFooter button{min-height:44px;margin:0;flex:1}.boxEditorFooter .primary{flex-basis:100%}.queueIndex summary,.scoreHelp summary{display:list-item;padding:8px 0}.focusDialog .birdBoxLayer{overflow:hidden}
+
+.speciesNoResults{font-size:13px;color:#597063;padding:10px;margin:0}.exportLocation{font-size:14px;margin:8px 0}.exportActions{position:sticky;bottom:0;z-index:2;background:white;border-top:1px solid #dce2d6;margin-top:10px;padding:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}.exportActions button{min-height:44px;margin:0}.exportActions .primary{flex:1;min-width:160px;font-size:14px;padding:12px}.exportError{flex-basis:100%;color:#8b392a}.exportError:empty{display:none}.emptySpecies{display:block;margin:5px 0}

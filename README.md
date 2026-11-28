@@ -212,3 +212,7 @@ A small mobile usability pass inspired by Jim Nielsen’s Sanding UI: one-line p
 ## v0.42 — Second sanding pass
 
 Remove the redundant count beside the Review heading, enlarge photo navigation hit targets, shorten the encounter status gap, and make score help and encounter navigation disclosure hit areas larger. Manual box editor shows whether drawing or redrawing, disables inapplicable add/delete actions, keeps Save/Reset/Cancel reachable, and retains drafts until Save. Audio species entry matches photo review; collapsing recording details pauses playback. Real browser regression exercises drawing, selecting, deleting and canceling a box and manual audio confirmation/undo. No model changes.
+
+## v0.43 — Sanding pass 3
+
+Fixed the deployment test harness to implement event registration and test actual recording-collapse pause behavior. Trim import inventory and duplicate region labels; show a single region summary in export with technical codes tucked away. Disable export until confirmed sightings exist. Clear the empty species hint as soon as a sighting is confirmed, show a no-match search state, and promote manually chosen candidates from collapsed alternative groups into the main list. Only one recording plays at a time. Sticky export actions with inline errors and duplicate-click prevention. No model, export data or persistence format changes. Browser checks cover search empty state, export enablement, compact inventory and sticky export controls.

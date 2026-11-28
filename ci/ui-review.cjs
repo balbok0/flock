@@ -47,10 +47,14 @@ async function manualConfirm(species){
 async function review(){
  await group();
  const card=page.locator('.encounterReview');await card.waitFor();
+ await screenshot('sanding-start');
+ const layout=await page.evaluate(()=>{const nodes=[...document.querySelectorAll('.reviewNav button:not([hidden]),.reviewNav span')].filter(n=>n.getClientRects().length);return {rows:new Set(nodes.map(n=>Math.round(n.getBoundingClientRect().top/8))).size,navHeight:document.querySelector('.reviewNav').getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth}});assert(!layout.overflow);assert(layout.navHeight<=55,JSON.stringify(layout));pass('Photo toolbar stays on one line at iPhone width');
  assert.equal(await card.count(),1);
  const firstId=await card.getAttribute('data-encounter-id');
+ for(let i=0;i<3;i++){await page.locator('.queueIndex summary').click();await page.locator('.queueIndexItem').last().click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId!==id&&!reviewWriting,firstId);assert.equal(await page.locator('.queueIndex').evaluate(n=>n.open),false);assert.equal(await card.locator('.photoBrowse').isVisible(),false);assert.equal(await card.locator('.reviewThumbs').isVisible(),false);await page.locator('.queueIndex summary').click();await page.locator('.queueIndexItem').first().click();await wait(id=>document.querySelector('.encounterReview')?.dataset.encounterId===id&&!reviewWriting,firstId);assert.equal(await page.locator('.queueIndex').evaluate(n=>n.open),false)}pass('Repeated encounter jumps close index; single photos have no redundant navigation');
  await manualConfirm('Rufous-vented Chachalaca');
  const row=card.locator('.reviewSpecies').filter({hasText:'Rufous-vented Chachalaca'});
+ assert.equal(await row.count(),1);assert.equal(await row.evaluate(n=>n.parentElement.classList.contains('reviewRows')),true);assert.equal(await page.evaluate(()=>document.activeElement?.type==='search'),false);await card.getByText('Search or add another species',{exact:true}).click();assert(await row.isVisible());pass('Manual species moves into main review list; search can close without hiding confirmation');
  await row.locator('button[aria-label="Increase Rufous-vented Chachalaca count"]').click();
  await wait(id=>state.encounters.find(e=>e.id===id)?.review?.[0]?.count===2&&!reviewWriting,firstId);
  const old=await card.locator('.reviewStage img').getAttribute('src');
@@ -59,6 +63,7 @@ async function review(){
  assert.equal(await row.locator('.reviewNumber').textContent(),'2');
  pass('Confirm once across a burst, adjust count, and browse photos without losing confirmation');
  await page.locator('.queueIndex summary').click();assert.match(await page.locator('.queueIndexItem[aria-current=true]').textContent(),/Rufous-vented Chachalaca/);assert.match(await page.locator('.queueIndexItem[aria-current=true]').textContent(),/Confirmed/);await page.locator('.queueIndex summary').click();pass('Encounter index names confirmed species');
+ await page.evaluate(()=>{const pause=()=>{};window.__qaPause=pause;UI.download('Test transfer',1,10,{received:100},pause)});await page.locator('#pauseProgress').click();await page.evaluate(()=>UI.download('Test transfer',2,10,{received:200},window.__qaPause));assert(await page.locator('#pauseProgress').isDisabled());assert.equal(await page.locator('#pauseProgress').textContent(),'Pausing…');await page.evaluate(()=>UI.finish('Test transfer ended',2,10));await dismiss();pass('Late progress update cannot re-enable a pause already requested');
  await screenshot('encounter');
  await card.getByRole('button',{name:'Split / merge encounters',exact:true}).click();
  const dialog=page.locator('dialog[open]');

@@ -69,9 +69,9 @@ function showGuideManager(){
 }
 // Reserve thumbnail space before async cache lookup, keeping the review layout stable.
 function referenceThumb(species,onClick){
- const b=btn('',onClick,'referenceThumb'),caption=el('small','Reference'),slot=el('span','No photo','referenceThumbPlaceholder');
+ const b=btn('',onClick,'referenceThumb'),caption=el('small','Reference'),slot=el('span','Compare','referenceThumbPlaceholder');
  b.setAttribute('aria-label','Compare reference photo for '+species);b.append(slot,caption);
- async function load(){try{const hit=await Guides.find(Taxonomy.exact(species));if(!b.isConnected||!hit)return;const img=el('img');img.alt=species+' reference';img.referrerPolicy='no-referrer';img.title='Photo: '+hit.by+' · '+Guides.licenseLabel(hit)+' · Avicommons';img.onerror=()=>{if(b.isConnected){img.remove();slot.hidden=false;caption.textContent='No photo'}};img.onload=()=>{if(b.isConnected){slot.hidden=true;caption.textContent=hit.by+' · '+Guides.licenseLabel(hit)}};b.insertBefore(img,caption);img.src=hit.src}catch{}}
+ async function load(){try{const hit=await Guides.find(Taxonomy.exact(species));if(!b.isConnected||!hit)return;const img=el('img');img.alt=species+' reference';img.referrerPolicy='no-referrer';img.title='Photo: '+hit.by+' · '+Guides.licenseLabel(hit)+' · Avicommons';img.onerror=()=>{if(b.isConnected){img.remove();slot.hidden=false;caption.textContent='Reference'}};img.onload=()=>{if(b.isConnected){slot.hidden=true;caption.textContent=hit.by+' · '+Guides.licenseLabel(hit)}};b.insertBefore(img,caption);img.src=hit.src}catch{}}
  // A microtask permits the caller to mount the row first.
  Promise.resolve().then(load);return b
 }

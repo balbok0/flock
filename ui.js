@@ -19,13 +19,13 @@ return {bytes,duration,details,guideMetrics}
 })();
 if(typeof module!=='undefined')module.exports=TransferStats;
 const UI=typeof document==='undefined'?null:(()=>{
-const by=id=>document.getElementById(id), log=[],dock=by('activityDock'),home=dock.parentNode,next=dock.nextSibling;let pauseAction=null;
-function report(message,done,total,detail){pauseAction=null;by('pauseProgress').hidden=true;by('activityDock').hidden=false;by('dismissProgress').hidden=!(Number.isFinite(done)&&Number.isFinite(total)&&done>=total);by('activity').textContent=message;const p=by('progress');if(Number.isFinite(done)&&Number.isFinite(total)&&total>0)p.value=Math.min(100,100*done/total);else p.removeAttribute('value');by('progressDetail').textContent=detail||''}
-function download(message,done,total,metrics,pause=null){report(message,done,total,TransferStats.details(metrics));by('dismissProgress').hidden=true;pauseAction=pause;by('pauseProgress').hidden=!pause;by('pauseProgress').disabled=false}
+const by=id=>document.getElementById(id), log=[],dock=by('activityDock'),home=dock.parentNode,next=dock.nextSibling;let pauseAction=null,pausePending=false;
+function report(message,done,total,detail){pauseAction=null;pausePending=false;by('pauseProgress').hidden=true;by('pauseProgress').textContent='Pause';by('activityDock').hidden=false;by('dismissProgress').hidden=!(Number.isFinite(done)&&Number.isFinite(total)&&done>=total);by('activity').textContent=message;const p=by('progress');if(Number.isFinite(done)&&Number.isFinite(total)&&total>0)p.value=Math.min(100,100*done/total);else p.removeAttribute('value');by('progressDetail').textContent=detail||''}
+function download(message,done,total,metrics,pause=null){const pending=!!pause&&pause===pauseAction&&pausePending;report(message,done,total,TransferStats.details(metrics));by('dismissProgress').hidden=true;pauseAction=pause;pausePending=pending;by('pauseProgress').hidden=!pause;by('pauseProgress').disabled=pending;by('pauseProgress').textContent=pending?'Pausing…':'Pause'}
 function finish(message,done,total,detail=''){report(message,done,total,detail);by('dismissProgress').hidden=false}
 function mount(dialog){if(dock.parentNode!==dialog)dialog.append(dock);dock.classList.add('modalActivityDock')}
 function unmount(dialog){if(dock.parentNode!==dialog)return;home.insertBefore(dock,next);dock.classList.remove('modalActivityDock')}
-by('pauseProgress').onclick=()=>{if(!pauseAction)return;by('pauseProgress').disabled=true;pauseAction()};
+by('pauseProgress').onclick=()=>{if(!pauseAction||pausePending)return;pausePending=true;by('pauseProgress').disabled=true;by('pauseProgress').textContent='Pausing…';pauseAction()};
 function note(message){log.push(new Date().toISOString()+' '+message);if(log.length>100)log.shift();by('log').textContent=log.join('\n')}
 function fail(e){const msg=e?.message||String(e);report('Error: '+msg,0,100,'See activity log for details.');by('dismissProgress').hidden=false;note('ERROR '+msg);return msg}
 window.addEventListener('error',e=>fail(e.error||e.message));window.addEventListener('unhandledrejection',e=>fail(e.reason));

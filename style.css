@@ -43,3 +43,35 @@ input[type=file]{display:block;width:100%;margin:5px 0 15px;padding:10px;backgro
 #activityDock.modalActivityDock{position:sticky;bottom:0;left:auto;right:auto;z-index:3;margin:10px -4px -4px;padding:10px 6px;background:#fff;box-shadow:0 -4px 12px #173d321a}#pauseProgress{min-height:36px;padding:6px 14px;margin:4px 0}#progressDetail{font-variant-numeric:tabular-nums;line-height:1.45;overflow-wrap:anywhere}#activityDock .secondary{width:auto}main{padding-bottom:180px}
 
 .guideList{margin:4px 0 10px}.guidePackRow{padding:12px 0;margin:0}.guidePackHead{display:flex;gap:10px;align-items:center;justify-content:space-between}.guidePackText{min-width:0;flex:1;overflow-wrap:anywhere}.guidePackText strong{font-size:15px;line-height:1.3}.guidePackText small{font-size:12px;margin:3px 0;color:#597063}.guidePackText progress{height:5px;display:block;width:100%;margin:7px 0 0}.guidePackActions{display:flex;flex-direction:column;gap:3px;align-items:stretch;flex:none}.guidePackActions button{margin:0;min-height:40px;padding:8px 12px}.guidePackActions .guideRemove{background:transparent;color:#8d4536;font-size:12px;min-height:32px;padding:4px 8px}.guidePreview .guidePackRow{border-bottom:0}.guideStatus:empty{display:none}.reviewExtraDialog .guideAdd,.reviewExtraDialog .guideHelp{margin:8px 0;padding:8px 0}.guideAdd summary,.guideHelp summary{cursor:pointer;font-weight:600;font-size:14px}.guideHelp p{font-size:12px;margin:8px 0;color:#597063}.guidePreview:empty{display:none}
+
+/* Mobile sanding: a compact, stable toolbar and readable species rows. */
+main{padding-bottom:max(28px,env(safe-area-inset-bottom))}
+body:has(#activityDock:not([hidden]):not(.modalActivityDock)) main{padding-bottom:180px}
+header{padding-top:max(16px,env(safe-area-inset-top))}
+.queueHeader{top:env(safe-area-inset-top,0px)}
+.queueTabs button,.queueNavigation button{min-height:44px}
+.reviewNav{display:flex;flex-wrap:nowrap;gap:5px;justify-content:space-between;align-items:center}
+.photoBrowse,.photoTools{display:flex;align-items:center;gap:4px;min-width:0}
+.photoBrowse button{min-width:36px;padding:5px 8px;font-size:19px}
+.photoBrowse span{min-width:32px;font-size:12px}
+.photoTools{margin-left:auto}
+.photoTools button{padding:7px 9px;white-space:nowrap}
+.photoTools .photoActionsButton{margin:0;min-width:44px}
+.photoTools button[aria-pressed=true]{background:#d4e6cf;color:#173d32}
+@media(max-width:350px){.reviewNav{flex-wrap:wrap}.photoTools{margin-left:0}.photoBrowse{flex:1}}
+.reviewSpecies{grid-template-columns:minmax(0,1fr) 100px;grid-template-rows:auto auto;align-items:center;column-gap:8px;row-gap:3px}
+.reviewSpecies>.reviewIdentity{grid-column:1;grid-row:1/span 2;align-self:center}
+.reviewSpecies>.reviewConfirm{grid-column:2;grid-row:1;align-self:end}
+.reviewCounter{grid-column:2;grid-row:2;align-self:start}
+.reviewSpecies:not(.isConfirmed) .reviewCounter{visibility:hidden}
+.reviewSpeciesName{overflow-wrap:normal;word-break:normal}
+.reviewSpecies .referenceThumb{flex-basis:52px;width:52px;min-height:70px}
+.reviewSpecies .referenceThumb img,.reviewSpecies .referenceThumbPlaceholder{width:52px;height:52px}
+.reviewSpecies .referenceThumb small{max-height:22px}
+.scoreHelp{font-size:12px;margin:3px 0 8px!important}
+.scoreHelp summary{font-size:12px;display:inline-block;padding:6px 0}
+.scoreHelp small{display:block;margin:4px 0}
+#pauseProgress,#dismissProgress,.guidePackActions .guideRemove{min-height:44px}
+#activityDock small:empty,#importStatus:empty,#birdRegionStatus:empty{display:none}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #347d61;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}

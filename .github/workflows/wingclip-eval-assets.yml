@@ -1,0 +1,28 @@
+name: WingCLIP public evaluation assets
+on:
+  push:
+    branches: [detector-eval]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public WingCLIP files
+        run: |
+          mkdir -p eval
+          for f in onnx/wingclip_visual_int8.onnx onnx/wingclip_visual_int8.data text_classifier_fp32.npy labels.json; do
+            curl -fLsS --retry 2 "https://huggingface.co/johnlian/WingCLIP-0.3/resolve/main/$f" -o "eval/$(basename "$f")"
+          done
+          ls -lh eval
+          sha256sum eval/*
+          python -m pip download --only-binary=:all: --no-deps onnxruntime -d eval
+          cp prebuilt/models/site/models/geo-v305-{fp32.onnx,labels.json} eval/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wingclip-public-assets
+          path: eval/
+          retention-days: 1
